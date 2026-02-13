@@ -1,0 +1,861 @@
+{% extends "base.html" %}
+
+{% block title %}الخريطة المباشرة - Collect Me IoT{% endblock %}
+
+{% block extra_css %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<!-- Leaflet Routing Machine CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+<style>
+.map-container {
+    height: 600px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.bin-popup {
+    text-align: center;
+    min-width: 200px;
+}
+
+.bin-popup h6 {
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.popup-info {
+    margin-bottom: 8px;
+}
+
+.popup-actions {
+    margin-top: 10px;
+}
+
+.popup-actions .btn {
+    margin: 2px;
+    font-size: 12px;
+    padding: 4px 8px;
+}
+
+.driver-popup {
+    text-align: center;
+    min-width: 180px;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.status-online { background-color: #28a745; }
+.status-busy { background-color: #ffc107; }
+.status-offline { background-color: #6c757d; }
+
+/* Custom marker styles */
+.bin-marker {
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    text-align: center;
+    line-height: 20px;
+    font-weight: bold;
+    color: white;
+    font-size: 12px;
+}
+
+.bin-full { background-color: #dc3545; }
+.bin-half { background-color: #ffc107; }
+.bin-empty { background-color: #28a745; }
+
+.driver-marker {
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    text-align: center;
+    line-height: 20px;
+    font-weight: bold;
+    color: white;
+    font-size: 12px;
+}
+
+.leaflet-routing-container {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.route-info {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Navigation Sidebar -->
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.dashboard') }}">
+                            <i class="fas fa-tachometer-alt"></i> لوحة التحكم
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.bins_management') }}">
+                            <i class="fas fa-trash-alt"></i> إدارة الحاويات
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('main.live_map') }}" class="nav-link active">
+                            <i class="fas fa-map-marked-alt"></i> الخريطة المباشرة
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.drivers_management') }}">
+                            <i class="fas fa-users"></i> إدارة السائقين
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.create_task') }}">
+                            <i class="fas fa-plus-circle"></i> إنشاء مهمة
+                        </a>
+                    </li>
+                    <!-- Reports navigation removed -->
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">الخريطة المباشرة</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshMap()">
+                            <i class="fas fa-sync-alt"></i> تحديث
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleFullscreen()">
+                            <i class="fas fa-expand"></i> ملء الشاشة
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="showRoutePanel()">
+                            <i class="fas fa-route"></i> إنشاء مسار
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-success" onclick="optimizeRoute()">
+                            <i class="fas fa-magic"></i> تحسين المسار
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map Controls -->
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <h6>مرشحات العرض</h6>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showBins" checked onchange="toggleBins()">
+                                        <label class="form-check-label" for="showBins">
+                                            عرض الحاويات
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showDrivers" checked onchange="toggleDrivers()">
+                                        <label class="form-check-label" for="showDrivers">
+                                            عرض السائقين
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showRoutes" onchange="toggleRoutes()">
+                                        <label class="form-check-label" for="showRoutes">
+                                            عرض المسارات
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <h6>حالة الحاويات</h6>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showFull" checked onchange="filterBins()">
+                                        <label class="form-check-label" for="showFull">
+                                            ممتلئة (≥80%)
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showHalfFull" checked onchange="filterBins()">
+                                        <label class="form-check-label" for="showHalfFull">
+                                            نصف ممتلئة (50-79%)
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showEmpty" checked onchange="filterBins()">
+                                        <label class="form-check-label" for="showEmpty">
+                                            فارغة (<50%)
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <h6>إعدادات المسار</h6>
+                                    <div class="form-group mb-2">
+                                        <label for="routeType" class="form-label small">نوع المسار:</label>
+                                        <select class="form-select form-select-sm" id="routeType" onchange="updateRouteType()">
+                                            <option value="driving">القيادة</option>
+                                            <option value="walking">المشي</option>
+                                            <option value="cycling">الدراجة</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-warning" onclick="clearRoutes()">
+                                        <i class="fas fa-eraser"></i> مسح المسارات
+                                    </button>
+                                </div>
+                                <div class="col-md-3">
+                                    <h6>الإحصائيات السريعة</h6>
+                                    <small class="text-muted">
+                                        إجمالي الحاويات: <strong id="totalBins">{{ bins|length }}</strong><br>
+                                        الحاويات الممتلئة: <strong id="fullBins">{{ bins|selectattr('is_full')|list|length }}</strong><br>
+                                        السائقين المتصلين: <strong id="onlineDrivers">{{ drivers|selectattr('status', 'equalto', 'online')|list|length }}</strong><br>
+                                        <span id="routeStats" style="display: none;">
+                                            المسافة: <strong id="routeDistance">-</strong><br>
+                                            الوقت المقدر: <strong id="routeTime">-</strong>
+                                        </span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map Container -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-body p-0">
+                            <div id="map" class="map-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Route Planning Panel -->
+            <div class="row mt-3" id="routePanel" style="display: none;">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-route"></i> تخطيط المسار
+                                <button class="btn btn-sm btn-outline-secondary float-end" onclick="hideRoutePanel()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>الحاويات المحددة للمسار:</h6>
+                                    <div id="selectedBinsForRoute" class="mb-3">
+                                        <p class="text-muted">انقر على الحاويات في الخريطة لإضافتها للمسار</p>
+                                    </div>
+                                    <div class="btn-group">
+                                        <button class="btn btn-success btn-sm" onclick="calculateRoute()">
+                                            <i class="fas fa-route"></i> حساب المسار
+                                        </button>
+                                        <button class="btn btn-warning btn-sm" onclick="optimizeSelectedRoute()">
+                                            <i class="fas fa-magic"></i> تحسين المسار
+                                        </button>
+                                        <button class="btn btn-danger btn-sm" onclick="clearSelectedBins()">
+                                            <i class="fas fa-trash"></i> مسح الاختيار
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div id="routeInstructions">
+                                        <h6>تعليمات المسار:</h6>
+                                        <div id="routeDirections" class="route-info" style="display: none;">
+                                            <!-- Route directions will be displayed here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map Legend -->
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">دليل الرموز</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>الحاويات:</h6>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="badge bg-danger me-2">●</div>
+                                        <span>ممتلئة (≥80%) - تحتاج جمع فوري</span>
+                                    </div>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="badge bg-warning me-2">●</div>
+                                        <span>نصف ممتلئة (50-79%) - مراقبة</span>
+                                    </div>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="badge bg-success me-2">●</div>
+                                        <span>فارغة (<50%) - طبيعية</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>السائقين:</h6>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="badge bg-primary me-2">●</div>
+                                        <span>متصل - متاح للمهام</span>
+                                    </div>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="badge bg-warning me-2">●</div>
+                                        <span>مشغول - ينفذ مهمة</span>
+                                    </div>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="badge bg-secondary me-2">●</div>
+                                        <span>غير متصل - غير متاح</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet Routing Machine JS -->
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+<!-- Data for map -->
+<script type="application/json" id="bins-data">{{ bins|tojson|safe }}</script>
+<script type="application/json" id="drivers-data">{{ drivers|tojson|safe }}</script>
+
+<script>
+// Global variables
+let map;
+let binMarkers = L.layerGroup();
+let driverMarkers = L.layerGroup();
+let routingControl;
+let selectedBinsForRoute = [];
+let routeLayerGroup = L.layerGroup();
+
+// Get data from JSON scripts
+const binsData = JSON.parse(document.getElementById('bins-data').textContent);
+const driversData = JSON.parse(document.getElementById('drivers-data').textContent);
+
+// Initialize map when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeMap();
+});
+
+// Initialize map
+function initializeMap() {
+    // Taiz, Yemen coordinates
+    const taizCenter = [13.5794, 44.0207];
+    
+    map = L.map('map', {
+        center: taizCenter,
+        zoom: 13,
+        zoomControl: true
+    });
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Add layer groups to map
+    binMarkers.addTo(map);
+    driverMarkers.addTo(map);
+    routeLayerGroup.addTo(map);
+
+    // Load bins and drivers
+    loadBinsOnMap();
+    loadDriversOnMap();
+
+    // Auto-fit map to show all bins if any exist
+    setTimeout(() => {
+        if (binMarkers.getLayers().length > 0) {
+            map.fitBounds(binMarkers.getBounds(), { padding: [20, 20] });
+        }
+    }, 500);
+}
+
+// Load bins on map
+function loadBinsOnMap() {
+    binMarkers.clearLayers();
+    
+    binsData.forEach(bin => {
+        if (bin.latitude && bin.longitude) {
+            const fillLevel = bin.fill_level || 0;
+            let markerClass = 'bin-empty';
+            let markerColor = '#28a745';
+            
+            if (fillLevel >= 80) {
+                markerClass = 'bin-full';
+                markerColor = '#dc3545';
+            } else if (fillLevel >= 50) {
+                markerClass = 'bin-half';
+                markerColor = '#ffc107';
+            }
+            
+            const customIcon = L.divIcon({
+                className: `bin-marker ${markerClass}`,
+                html: `<div style="background-color: ${markerColor}; width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">${fillLevel}%</div>`,
+                iconSize: [25, 25],
+                iconAnchor: [12, 12]
+            });
+            
+            const marker = L.marker([bin.latitude, bin.longitude], { icon: customIcon });
+            
+            const popupContent = `
+                <div class="bin-popup">
+                    <h6><i class="fas fa-trash-alt"></i> ${bin.bin_id}</h6>
+                    <div class="popup-info"><strong>الموقع:</strong> ${bin.location}</div>
+                    <div class="popup-info"><strong>مستوى الامتلاء:</strong> ${fillLevel}%</div>
+                    <div class="popup-info"><strong>درجة الحرارة:</strong> ${bin.temperature || 'N/A'}°C</div>
+                    <div class="popup-info"><strong>مستوى البطارية:</strong> ${bin.battery_level || 'N/A'}%</div>
+                    <div class="popup-info"><strong>الحالة:</strong> ${getBinStatusText(bin.status)}</div>
+                    ${bin.last_collected ? `<div class="popup-info"><strong>آخر جمع:</strong> ${new Date(bin.last_collected).toLocaleDateString('ar-SA')}</div>` : ''}
+                    <div class="popup-actions">
+                        <button class="btn btn-primary btn-sm" onclick="addBinToRoute(${bin.id}, '${bin.bin_id}')">
+                            <i class="fas fa-plus"></i> إضافة للمسار
+                        </button>
+                        <button class="btn btn-success btn-sm" onclick="createRouteToThis(${bin.latitude}, ${bin.longitude}, '${bin.bin_id}')">
+                            <i class="fas fa-route"></i> مسار إلى هنا
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            marker.bindPopup(popupContent);
+            marker.binData = bin;
+            binMarkers.addLayer(marker);
+        }
+    });
+}
+
+// Load drivers on map
+function loadDriversOnMap() {
+    driverMarkers.clearLayers();
+    
+    driversData.forEach(driver => {
+        if (driver.current_location_lat && driver.current_location_lng) {
+            let markerColor = '#6c757d'; // offline
+            if (driver.status === 'online') markerColor = '#007bff';
+            else if (driver.status === 'busy') markerColor = '#ffc107';
+            
+            const customIcon = L.divIcon({
+                className: 'driver-marker',
+                html: `<div style="background-color: ${markerColor}; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;"><i class="fas fa-truck"></i></div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+            
+            const marker = L.marker([driver.current_location_lat, driver.current_location_lng], { icon: customIcon });
+            
+            const popupContent = `
+                <div class="driver-popup">
+                    <h6><i class="fas fa-user"></i> ${driver.user_name || 'سائق'}</h6>
+                    <div class="popup-info">
+                        <span class="status-indicator status-${driver.status}"></span>
+                        <strong>الحالة:</strong> ${getDriverStatusText(driver.status)}
+                    </div>
+                    ${driver.vehicle_name ? `<div class="popup-info"><strong>المركبة:</strong> ${driver.vehicle_name}</div>` : ''}
+                    <div class="popup-info"><strong>التقييم:</strong> ${driver.rating || 'N/A'}/5</div>
+                    <div class="popup-info"><strong>إجمالي المهام:</strong> ${driver.total_collections || 0}</div>
+                    <div class="popup-actions">
+                        <button class="btn btn-primary btn-sm" onclick="createRouteFromDriver(${driver.current_location_lat}, ${driver.current_location_lng}, '${driver.user_name}')">
+                            <i class="fas fa-route"></i> مسار من هنا
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            marker.bindPopup(popupContent);
+            marker.driverData = driver;
+            driverMarkers.addLayer(marker);
+        }
+    });
+}
+
+// Helper functions for text translation
+function getBinStatusText(status) {
+    const statusMap = {
+        'active': 'نشطة',
+        'inactive': 'غير نشطة',
+        'maintenance': 'صيانة',
+        'error': 'خطأ'
+    };
+    return statusMap[status] || status;
+}
+
+function getDriverStatusText(status) {
+    const statusMap = {
+        'online': 'متصل',
+        'busy': 'مشغول',
+        'offline': 'غير متصل',
+        'break': 'استراحة',
+        'unavailable': 'غير متاح'
+    };
+    return statusMap[status] || status;
+}
+
+// Map control functions
+function refreshMap() {
+    loadBinsOnMap();
+    loadDriversOnMap();
+    console.log('Map refreshed');
+}
+
+function toggleFullscreen() {
+    const mapContainer = document.getElementById('map');
+    if (!document.fullscreenElement) {
+        mapContainer.requestFullscreen().catch(err => {
+            console.log('Error attempting to enable fullscreen:', err);
+        });
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+// Filter functions
+function toggleBins() {
+    const show = document.getElementById('showBins').checked;
+    if (show) {
+        map.addLayer(binMarkers);
+    } else {
+        map.removeLayer(binMarkers);
+    }
+}
+
+function toggleDrivers() {
+    const show = document.getElementById('showDrivers').checked;
+    if (show) {
+        map.addLayer(driverMarkers);
+    } else {
+        map.removeLayer(driverMarkers);
+    }
+}
+
+function toggleRoutes() {
+    const show = document.getElementById('showRoutes').checked;
+    if (show) {
+        map.addLayer(routeLayerGroup);
+    } else {
+        map.removeLayer(routeLayerGroup);
+    }
+}
+
+function filterBins() {
+    const showFull = document.getElementById('showFull').checked;
+    const showHalf = document.getElementById('showHalfFull').checked;
+    const showEmpty = document.getElementById('showEmpty').checked;
+    
+    binMarkers.eachLayer(marker => {
+        const fillLevel = marker.binData.fill_level || 0;
+        let show = false;
+        
+        if (fillLevel >= 80 && showFull) show = true;
+        else if (fillLevel >= 50 && fillLevel < 80 && showHalf) show = true;
+        else if (fillLevel < 50 && showEmpty) show = true;
+        
+        if (show) {
+            marker.setOpacity(1);
+        } else {
+            marker.setOpacity(0.3);
+        }
+    });
+}
+
+// Route planning functions
+function showRoutePanel() {
+    document.getElementById('routePanel').style.display = 'block';
+}
+
+function hideRoutePanel() {
+    document.getElementById('routePanel').style.display = 'none';
+    clearSelectedBins();
+}
+
+function addBinToRoute(binId, binName) {
+    if (!selectedBinsForRoute.find(b => b.id === binId)) {
+        selectedBinsForRoute.push({ id: binId, name: binName });
+        updateSelectedBinsDisplay();
+    }
+}
+
+function updateSelectedBinsDisplay() {
+    const container = document.getElementById('selectedBinsForRoute');
+    if (selectedBinsForRoute.length === 0) {
+        container.innerHTML = '<p class="text-muted">انقر على الحاويات في الخريطة لإضافتها للمسار</p>';
+    } else {
+        container.innerHTML = '<div class="mb-2"><strong>الحاويات المحددة:</strong></div>' +
+            selectedBinsForRoute.map(bin => 
+                `<span class="badge bg-primary me-1 mb-1">${bin.name} <button type="button" class="btn-close btn-close-white ms-1" onclick="removeBinFromRoute(${bin.id})"></button></span>`
+            ).join('');
+    }
+}
+
+function removeBinFromRoute(binId) {
+    selectedBinsForRoute = selectedBinsForRoute.filter(b => b.id !== binId);
+    updateSelectedBinsDisplay();
+}
+
+function clearSelectedBins() {
+    selectedBinsForRoute = [];
+    updateSelectedBinsDisplay();
+}
+
+function calculateRoute() {
+    if (selectedBinsForRoute.length < 2) {
+        alert('يرجى اختيار حاويتين على الأقل لحساب المسار');
+        return;
+    }
+    
+    // Get coordinates for selected bins
+    const waypoints = [];
+    selectedBinsForRoute.forEach(selectedBin => {
+        binMarkers.eachLayer(marker => {
+            if (marker.binData.id === selectedBin.id) {
+                waypoints.push(L.latLng(marker.binData.latitude, marker.binData.longitude));
+            }
+        });
+    });
+    
+    createRouteWithWaypoints(waypoints);
+}
+
+function createRouteWithWaypoints(waypoints) {
+    // Clear existing route
+    if (routingControl) {
+        map.removeControl(routingControl);
+    }
+    
+    routingControl = L.Routing.control({
+        waypoints: waypoints,
+        routeWhileDragging: false,
+        addWaypoints: false,
+        createMarker: function() { return null; }, // Don't create markers, we have our own
+        lineOptions: {
+            styles: [{ color: '#007bff', weight: 6, opacity: 0.8 }]
+        },
+        language: 'ar'
+    }).addTo(map);
+    
+    routingControl.on('routesfound', function(e) {
+        const route = e.routes[0];
+        const distance = (route.summary.totalDistance / 1000).toFixed(2);
+        const time = Math.round(route.summary.totalTime / 60);
+        
+        document.getElementById('routeStats').style.display = 'block';
+        document.getElementById('routeDistance').textContent = distance + ' كم';
+        document.getElementById('routeTime').textContent = time + ' دقيقة';
+        
+        // Show route directions
+        const directionsDiv = document.getElementById('routeDirections');
+        directionsDiv.innerHTML = `
+            <div><strong>المسافة الإجمالية:</strong> ${distance} كم</div>
+            <div><strong>الوقت المقدر:</strong> ${time} دقيقة</div>
+            <div class="mt-2"><strong>تعليمات المسار:</strong></div>
+            <ol class="mt-2">
+                ${route.instructions.map(instruction => 
+                    `<li class="mb-1">${instruction.text}</li>`
+                ).join('')}
+            </ol>
+        `;
+        directionsDiv.style.display = 'block';
+    });
+}
+
+function createRouteToThis(lat, lng, binName) {
+    // Find nearest driver location or use map center
+    let startPoint = map.getCenter();
+    
+    // Try to find an online driver as starting point
+    driverMarkers.eachLayer(marker => {
+        if (marker.driverData.status === 'online') {
+            startPoint = L.latLng(marker.driverData.current_location_lat, marker.driverData.current_location_lng);
+            return;
+        }
+    });
+    
+    const endPoint = L.latLng(lat, lng);
+    createRouteWithWaypoints([startPoint, endPoint]);
+    
+    // Show route panel
+    showRoutePanel();
+}
+
+function createRouteFromDriver(lat, lng, driverName) {
+    const startPoint = L.latLng(lat, lng);
+    
+    // Find a full bin as destination
+    let endPoint = map.getCenter();
+    binMarkers.eachLayer(marker => {
+        if (marker.binData.fill_level >= 80) {
+            endPoint = L.latLng(marker.binData.latitude, marker.binData.longitude);
+            return;
+        }
+    });
+    
+    createRouteWithWaypoints([startPoint, endPoint]);
+    showRoutePanel();
+}
+
+function optimizeRoute() {
+    if (selectedBinsForRoute.length < 3) {
+        alert('يرجى اختيار 3 حاويات على الأقل لتحسين المسار');
+        return;
+    }
+    
+    // Simple optimization: sort by distance from first bin
+    // In a real implementation, you would use a proper TSP algorithm
+    const firstBin = selectedBinsForRoute[0];
+    let firstCoords;
+    
+    binMarkers.eachLayer(marker => {
+        if (marker.binData.id === firstBin.id) {
+            firstCoords = [marker.binData.latitude, marker.binData.longitude];
+        }
+    });
+    
+    if (firstCoords) {
+        const optimizedBins = [firstBin];
+        const remainingBins = selectedBinsForRoute.slice(1);
+        
+        remainingBins.sort((a, b) => {
+            let aCoords, bCoords;
+            binMarkers.eachLayer(marker => {
+                if (marker.binData.id === a.id) aCoords = [marker.binData.latitude, marker.binData.longitude];
+                if (marker.binData.id === b.id) bCoords = [marker.binData.latitude, marker.binData.longitude];
+            });
+            
+            const distA = Math.sqrt(Math.pow(aCoords[0] - firstCoords[0], 2) + Math.pow(aCoords[1] - firstCoords[1], 2));
+            const distB = Math.sqrt(Math.pow(bCoords[0] - firstCoords[0], 2) + Math.pow(bCoords[1] - firstCoords[1], 2));
+            
+            return distA - distB;
+        });
+        
+        selectedBinsForRoute = optimizedBins.concat(remainingBins);
+        updateSelectedBinsDisplay();
+        calculateRoute();
+    }
+}
+
+function optimizeSelectedRoute() {
+    optimizeRoute();
+}
+
+function clearRoutes() {
+    if (routingControl) {
+        map.removeControl(routingControl);
+        routingControl = null;
+    }
+    document.getElementById('routeStats').style.display = 'none';
+    document.getElementById('routeDirections').style.display = 'none';
+}
+
+function updateRouteType() {
+    // This would change the routing profile
+    // For now, just recalculate if we have a route
+    if (routingControl && selectedBinsForRoute.length >= 2) {
+        calculateRoute();
+    }
+}
+
+// Socket.IO for real-time updates
+if (typeof io !== 'undefined') {
+    const socket = io();
+    
+    socket.on('bin_update', function(data) {
+        console.log('Bin updated:', data);
+        // Refresh bins on map
+        loadBinsOnMap();
+    });
+    
+    socket.on('driver_location_update', function(data) {
+        console.log('Driver location updated:', data);
+        // Refresh drivers on map
+        loadDriversOnMap();
+    });
+    
+    socket.on('task_update', function(data) {
+        console.log('Task updated:', data);
+        // Update route display if applicable
+    });
+}
+</script>boxes
+    const filterCheckboxes = document.querySelectorAll('input[type="checkbox"]');
+    filterCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            console.log(`Filter ${this.id} changed to: ${this.checked}`);
+            // In a real implementation, this would filter the map markers
+            updateMapFilters();
+        });
+    });
+});
+
+function updateMapFilters() {
+    // This function would update the map based on the selected filters
+    console.log('Updating map filters...');
+    
+    // Get current filter states
+    const filters = {
+        showBins: document.getElementById('showBins').checked,
+        showDrivers: document.getElementById('showDrivers').checked,
+        showRoutes: document.getElementById('showRoutes').checked,
+        showFull: document.getElementById('showFull').checked,
+        showHalfFull: document.getElementById('showHalfFull').checked,
+        showEmpty: document.getElementById('showEmpty').checked,
+        showOnline: document.getElementById('showOnline').checked,
+        showBusy: document.getElementById('showBusy').checked,
+        showOffline: document.getElementById('showOffline').checked
+    };
+    
+    // Apply filters to map markers (placeholder)
+    console.log('Active filters:', filters);
+}
+
+// Socket.IO for real-time updates
+if (typeof io !== 'undefined') {
+    const socket = io();
+    
+    socket.on('bin_update', function(data) {
+        console.log('Bin updated:', data);
+        // Update bin marker on map
+    });
+    
+    socket.on('driver_location_update', function(data) {
+        console.log('Driver location updated:', data);
+        // Update driver marker on map
+    });
+    
+    socket.on('task_update', function(data) {
+        console.log('Task updated:', data);
+        // Update route display if applicable
+    });
+}
+</script>
+{% endblock %}

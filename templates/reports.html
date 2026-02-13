@@ -1,0 +1,785 @@
+{% extends "base.html" %}
+
+{% block title %}التقارير والإحصائيات - Collect Me IoT{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<header class="main-header">
+    <div class="header-content">
+        <div class="logo-section">
+            <i class="fas fa-recycle"></i>
+            <h1>Collect Me IoT</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline-light btn-sm" onclick="toggleLanguage()">
+                <i class="fas fa-globe"></i> العربية
+            </button>
+            <div class="user-info">
+                <div class="user-avatar">{{ session.name[0] if session.name else 'A' }}</div>
+                <span>{{ session.name if session.name else 'المدير' }}</span>
+                <a href="{{ url_for('main.logout') }}" class="btn btn-outline-light btn-sm ms-2">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Sidebar -->
+<nav class="main-sidebar">
+    <div class="sidebar-nav">
+        <div class="nav-item">
+            <a href="{{ url_for('main.dashboard') }}" class="nav-link">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>لوحة التحكم</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.bins_management') }}" class="nav-link">
+                <i class="fas fa-trash-alt"></i>
+                <span>الحاويات</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.live_map') }}" class="nav-link">
+                <i class="fas fa-map-marked-alt"></i>
+                <span>الخريطة الحية</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.drivers_management') }}" class="nav-link">
+                <i class="fas fa-users"></i>
+                <span>السائقون</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.create_task') }}" class="nav-link">
+                <i class="fas fa-tasks"></i>
+                <span>إنشاء مهمة</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.reports') }}" class="nav-link active">
+                <i class="fas fa-chart-bar"></i>
+                <span>التقارير</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="#" class="nav-link">
+                <i class="fas fa-cog"></i>
+                <span>الإعدادات</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main-content">
+    <div class="container-fluid">
+        <!-- Page Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-1">التقارير والإحصائيات</h2>
+                        <p class="text-muted mb-0">تحليل شامل لأداء نظام إدارة النفايات</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-success" onclick="exportReport()">
+                            <i class="fas fa-download"></i> تصدير تقرير
+                        </button>
+                        <button class="btn btn-primary" onclick="refreshReports()">
+                            <i class="fas fa-sync-alt"></i> تحديث
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Date Range and Filters -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label for="dateFrom" class="form-label">من تاريخ</label>
+                                <input type="date" class="form-control" id="dateFrom" value="2024-01-01">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="dateTo" class="form-label">إلى تاريخ</label>
+                                <input type="date" class="form-control" id="dateTo" value="2024-01-31">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="reportType" class="form-label">نوع التقرير</label>
+                                <select class="form-select" id="reportType">
+                                    <option value="overview">نظرة عامة</option>
+                                    <option value="performance">الأداء</option>
+                                    <option value="efficiency">الكفاءة</option>
+                                    <option value="costs">التكاليف</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="driverFilter" class="form-label">السائق</label>
+                                <select class="form-select" id="driverFilter">
+                                    <option value="">جميع السائقين</option>
+                                    <option value="ahmed">أحمد علي</option>
+                                    <option value="sarah">سارة أحمد</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" onclick="generateReport()">
+                                    <i class="fas fa-chart-line"></i> توليد
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="row mb-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon primary">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <div class="stats-number">156</div>
+                    <div class="stats-label">إجمالي المهام</div>
+                    <div class="stats-change positive">
+                        <i class="fas fa-arrow-up"></i> +12% من الشهر الماضي
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stats-number">142</div>
+                    <div class="stats-label">مهام مكتملة</div>
+                    <div class="stats-change positive">
+                        <i class="fas fa-arrow-up"></i> 91% معدل الإنجاز
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon warning">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stats-number">2.3</div>
+                    <div class="stats-label">متوسط الوقت (ساعة)</div>
+                    <div class="stats-change negative">
+                        <i class="fas fa-arrow-down"></i> -0.2 من الشهر الماضي
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon info">
+                        <i class="fas fa-route"></i>
+                    </div>
+                    <div class="stats-number">45.2</div>
+                    <div class="stats-label">متوسط المسافة (كم)</div>
+                    <div class="stats-change positive">
+                        <i class="fas fa-arrow-up"></i> +3.1 من الشهر الماضي
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="row mb-4">
+            <!-- Collection Trends -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-line"></i> اتجاهات الجمع
+                            </h5>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-primary active" onclick="changeChartPeriod('week')">أسبوع</button>
+                                <button class="btn btn-outline-primary" onclick="changeChartPeriod('month')">شهر</button>
+                                <button class="btn btn-outline-primary" onclick="changeChartPeriod('year')">سنة</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="collectionTrendsChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Driver Performance -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users"></i> أداء السائقين
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="driverPerformanceChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Reports -->
+        <div class="row mb-4">
+            <!-- Task Completion Rate -->
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie"></i> معدل إنجاز المهام
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="taskCompletionChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Route Efficiency -->
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-route"></i> كفاءة المسارات
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="routeEfficiencyChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Tables -->
+        <div class="row">
+            <!-- Driver Performance Table -->
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-table"></i> أداء السائقين التفصيلي
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-container">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>السائق</th>
+                                        <th>المهام</th>
+                                        <th>المدة</th>
+                                        <th>المسافة</th>
+                                        <th>التقييم</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-avatar me-2" style="width: 30px; height: 30px;">أ</div>
+                                                <span>أحمد علي</span>
+                                            </div>
+                                        </td>
+                                        <td>45</td>
+                                        <td>2.1 ساعة</td>
+                                        <td>42.3 كم</td>
+                                        <td>
+                                            <div class="rating">
+                                                <i class="fas fa-star text-warning"></i>
+                                                <i class="fas fa-star text-warning"></i>
+                                                <i class="fas fa-star text-warning"></i>
+                                                <i class="fas fa-star text-warning"></i>
+                                                <i class="fas fa-star text-warning"></i>
+                                                <span class="ms-1">4.8</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-avatar me-2" style="width: 30px; height: 30px;">س</div>
+                                                <span>سارة أحمد</span>
+                                            </div>
+                                        </td>
+                                        <td>38</td>
+                                        <td>2.4 ساعة</td>
+                                        <td>48.1 كم</td>
+                                        <td>
+                                            <div class="rating">
+                                                <i class="fas fa-star text-warning"></i>
+                                                <i class="fas fa-star text-warning"></i>
+                                                <i class="fas fa-star text-warning"></i>
+                                                <i class="fas fa-star text-warning"></i>
+                                                <i class="far fa-star text-warning"></i>
+                                                <span class="ms-1">4.2</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bin Status Summary -->
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-trash-alt"></i> ملخص حالة الحاويات
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-container">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>الموقع</th>
+                                        <th>إجمالي الحاويات</th>
+                                        <th>ممتلئة</th>
+                                        <th>نصف ممتلئة</th>
+                                        <th>فارغة</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>وسط المدينة</td>
+                                        <td>25</td>
+                                        <td><span class="badge bg-danger">8</span></td>
+                                        <td><span class="badge bg-warning">12</span></td>
+                                        <td><span class="badge bg-success">5</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>الأحياء السكنية</td>
+                                        <td>18</td>
+                                        <td><span class="badge bg-danger">3</span></td>
+                                        <td><span class="badge bg-warning">8</span></td>
+                                        <td><span class="badge bg-success">7</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>المناطق التجارية</td>
+                                        <td>22</td>
+                                        <td><span class="badge bg-danger">12</span></td>
+                                        <td><span class="badge bg-warning">6</span></td>
+                                        <td><span class="badge bg-success">4</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cost Analysis -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-dollar-sign"></i> تحليل التكاليف
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="cost-item">
+                                    <div class="cost-icon">
+                                        <i class="fas fa-gas-pump"></i>
+                                    </div>
+                                    <div class="cost-details">
+                                        <div class="cost-label">وقود</div>
+                                        <div class="cost-amount">2,450 ريال</div>
+                                        <div class="cost-change positive">+5%</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="cost-item">
+                                    <div class="cost-icon">
+                                        <i class="fas fa-tools"></i>
+                                    </div>
+                                    <div class="cost-details">
+                                        <div class="cost-label">صيانة</div>
+                                        <div class="cost-amount">1,200 ريال</div>
+                                        <div class="cost-change negative">-12%</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="cost-item">
+                                    <div class="cost-icon">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <div class="cost-details">
+                                        <div class="cost-label">أجور</div>
+                                        <div class="cost-amount">8,500 ريال</div>
+                                        <div class="cost-change positive">+3%</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="cost-item">
+                                    <div class="cost-icon">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                    <div class="cost-details">
+                                        <div class="cost-label">إجمالي</div>
+                                        <div class="cost-amount">12,150 ريال</div>
+                                        <div class="cost-change positive">+2%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.stats-icon.info {
+    background: linear-gradient(135deg, var(--info-color), #138496);
+}
+
+.cost-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+}
+
+.cost-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), #2980b9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    margin-left: 1rem;
+}
+
+.cost-details {
+    flex-grow: 1;
+}
+
+.cost-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+
+.cost-amount {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--dark-color);
+    margin-bottom: 0.25rem;
+}
+
+.cost-change {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.cost-change.positive {
+    color: var(--success-color);
+}
+
+.cost-change.negative {
+    color: var(--danger-color);
+}
+
+.rating {
+    display: flex;
+    align-items: center;
+}
+
+.btn-group .btn.active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .cost-item {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .cost-icon {
+        margin-left: 0;
+        margin-bottom: 0.5rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Reports and analytics functions
+let currentChartPeriod = 'week';
+
+function refreshReports() {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري...';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        location.reload();
+    }, 2000);
+}
+
+function generateReport() {
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+    const reportType = document.getElementById('reportType').value;
+    const driverFilter = document.getElementById('driverFilter').value;
+    
+    console.log('Generating report:', {
+        dateFrom,
+        dateTo,
+        reportType,
+        driverFilter
+    });
+    
+    alert('سيتم توليد التقرير بناءً على المعايير المحددة');
+}
+
+function exportReport() {
+    const reportType = document.getElementById('reportType').value;
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+    
+    console.log('Exporting report:', { reportType, dateFrom, dateTo });
+    alert('سيتم تصدير التقرير إلى ملف PDF');
+}
+
+function changeChartPeriod(period) {
+    currentChartPeriod = period;
+    
+    // Update active button
+    document.querySelectorAll('.btn-group .btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Update charts based on period
+    updateCharts(period);
+}
+
+function updateCharts(period) {
+    console.log('Updating charts for period:', period);
+    
+    // Update collection trends chart
+    updateCollectionTrendsChart(period);
+    
+    // Update other charts as needed
+}
+
+function updateCollectionTrendsChart(period) {
+    const ctx = document.getElementById('collectionTrendsChart').getContext('2d');
+    
+    let labels, data;
+    
+    switch(period) {
+        case 'week':
+            labels = ['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
+            data = [12, 19, 15, 25, 22, 18, 14];
+            break;
+        case 'month':
+            labels = ['الأسبوع 1', 'الأسبوع 2', 'الأسبوع 3', 'الأسبوع 4'];
+            data = [85, 92, 78, 88];
+            break;
+        case 'year':
+            labels = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو'];
+            data = [320, 350, 380, 420, 390, 450];
+            break;
+    }
+    
+    // Destroy existing chart if it exists
+    if (window.collectionTrendsChart) {
+        window.collectionTrendsChart.destroy();
+    }
+    
+    window.collectionTrendsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'عدد المهام المكتملة',
+                data: data,
+                borderColor: '#3498db',
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Initialize all charts
+function initializeCharts() {
+    // Collection Trends Chart
+    updateCollectionTrendsChart('week');
+    
+    // Driver Performance Chart
+    const driverCtx = document.getElementById('driverPerformanceChart').getContext('2d');
+    new Chart(driverCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['أحمد علي', 'سارة أحمد'],
+            datasets: [{
+                data: [45, 38],
+                backgroundColor: [
+                    '#3498db',
+                    '#e74c3c'
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                }
+            }
+        }
+    });
+    
+    // Task Completion Chart
+    const completionCtx = document.getElementById('taskCompletionChart').getContext('2d');
+    new Chart(completionCtx, {
+        type: 'pie',
+        data: {
+            labels: ['مكتملة', 'قيد التنفيذ', 'ملغية'],
+            datasets: [{
+                data: [142, 8, 6],
+                backgroundColor: [
+                    '#27ae60',
+                    '#f39c12',
+                    '#e74c3c'
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                }
+            }
+        }
+    });
+    
+    // Route Efficiency Chart
+    const efficiencyCtx = document.getElementById('routeEfficiencyChart').getContext('2d');
+    new Chart(efficiencyCtx, {
+        type: 'bar',
+        data: {
+            labels: ['المسار 1', 'المسار 2', 'المسار 3', 'المسار 4', 'المسار 5'],
+            datasets: [{
+                label: 'كفاءة المسار (%)',
+                data: [85, 92, 78, 88, 95],
+                backgroundColor: [
+                    'rgba(52, 152, 219, 0.8)',
+                    'rgba(39, 174, 96, 0.8)',
+                    'rgba(243, 156, 18, 0.8)',
+                    'rgba(231, 76, 60, 0.8)',
+                    'rgba(155, 89, 182, 0.8)'
+                ],
+                borderColor: [
+                    '#3498db',
+                    '#27ae60',
+                    '#f39c12',
+                    '#e74c3c',
+                    '#9b59b6'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+}
+
+// Initialize reports when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    
+    // Set default date range to current month
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    document.getElementById('dateFrom').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('dateTo').value = lastDay.toISOString().split('T')[0];
+    
+    // Auto-refresh reports every 5 minutes
+    setInterval(() => {
+        console.log('Auto-refreshing reports...');
+        // You can add auto-refresh logic here
+    }, 300000);
+});
+</script>
+{% endblock %}

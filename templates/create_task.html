@@ -1,0 +1,927 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<!-- Leaflet Routing Machine -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+{% endblock %}
+
+{% block title %}إنشاء مهمة - Collect Me IoT{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<header class="main-header">
+    <div class="header-content">
+        <div class="logo-section">
+            <i class="fas fa-recycle"></i>
+            <h1>Collect Me IoT</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline-light btn-sm" onclick="toggleLanguage()">
+                <i class="fas fa-globe"></i> العربية
+            </button>
+            <div class="user-info">
+                <div class="user-avatar">{{ session.name[0] if session.name else 'A' }}</div>
+                <span>{{ session.name if session.name else 'المدير' }}</span>
+                <a href="{{ url_for('main.logout') }}" class="btn btn-outline-light btn-sm ms-2">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Sidebar -->
+<nav class="main-sidebar">
+    <div class="sidebar-nav">
+        <div class="nav-item">
+            <a href="{{ url_for('main.dashboard') }}" class="nav-link">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>لوحة التحكم</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.bins_management') }}" class="nav-link">
+                <i class="fas fa-trash-alt"></i>
+                <span>الحاويات</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.live_map') }}" class="nav-link">
+                <i class="fas fa-map-marked-alt"></i>
+                <span>الخريطة الحية</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.drivers_management') }}" class="nav-link">
+                <i class="fas fa-users"></i>
+                <span>السائقون</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.create_task') }}" class="nav-link active">
+                <i class="fas fa-tasks"></i>
+                <span>إنشاء مهمة</span>
+            </a>
+        </div>
+        <!-- Reports navigation removed -->
+        <div class="nav-item">
+            <a href="#" class="nav-link">
+                <i class="fas fa-cog"></i>
+                <span>الإعدادات</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main-content">
+    <div class="container-fluid">
+        <!-- Page Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-1">إنشاء مهمة جديدة</h2>
+                        <p class="text-muted mb-0">إنشاء مهمة جمع نفايات وتخصيصها للسائق</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-secondary" onclick="window.history.back()">
+                            <i class="fas fa-arrow-right"></i> رجوع
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task Creation Form -->
+        <div class="row">
+            <!-- Left Column - Bin Selection -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-trash-alt"></i> اختيار الحاويات
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Filters for Bins -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="binSearch" class="form-label">البحث في الحاويات</label>
+                                <input type="text" class="form-control" id="binSearch" placeholder="ابحث عن حاوية...">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="binStatusFilter" class="form-label">حالة الامتلاء</label>
+                                <select class="form-select" id="binStatusFilter">
+                                    <option value="">جميع الحالات</option>
+                                    <option value="full">ممتلئ (80%+)</option>
+                                    <option value="half">نصف ممتلئ (40-79%)</option>
+                                    <option value="empty">فارغ (أقل من 40%)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="binLocationFilter" class="form-label">الموقع</label>
+                                <select class="form-select" id="binLocationFilter">
+                                    <option value="">جميع المواقع</option>
+                                    <option value="main">الشارع الرئيسي</option>
+                                    <option value="park">المنتزه</option>
+                                    <option value="downtown">وسط المدينة</option>
+                                    <option value="shopping">مركز التسوق</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-outline-secondary w-100" onclick="clearBinFilters()">
+                                    <i class="fas fa-times"></i> مسح
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Selected Bins Summary -->
+                        <div class="alert alert-info" id="selectedBinsSummary" style="display: none;">
+                            <i class="fas fa-info-circle"></i>
+                            <span id="selectedBinsCount">0</span> حاوية محددة
+                        </div>
+
+                        <!-- Bins List -->
+                        <div class="bins-list" style="max-height: 400px; overflow-y: auto;">
+                            {% for bin in full_bins %}
+                            <div class="bin-item" data-bin-id="{{ bin.id }}" data-fill-level="{{ bin.fill_level }}"
+                                data-location="{{ bin.location }}">
+                                <div class="d-flex align-items-center p-3 border rounded mb-2">
+                                    <div class="form-check me-3">
+                                        <input class="form-check-input bin-checkbox" type="checkbox"
+                                            value="{{ bin.id }}" id="bin{{ bin.id }}">
+                                        <label class="form-check-label" for="bin{{ bin.id }}"></label>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">{{ bin.bin_id }}</h6>
+                                                <p class="mb-1 text-muted">{{ bin.location }}</p>
+                                                <div class="fill-level">
+                                                    <span class="me-2">{{ bin.fill_level }}%</span>
+                                                    <div class="fill-bar" style="width: 100px;">
+                                                        <div class="fill-progress {{ 'high' if bin.fill_level >= 80 else 'medium' if bin.fill_level >= 40 else 'low' }}"
+                                                            style="width: {{ bin.fill_level }}%"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <span
+                                                    class="status-badge {{ 'full' if bin.fill_level >= 80 else 'half' if bin.fill_level >= 40 else 'empty' }}">
+                                                    {{ 'ممتلئ' if bin.fill_level >= 80 else 'نصف ممتلئ' if
+                                                    bin.fill_level >= 40 else 'فارغ' }}
+                                                </span>
+                                                <div class="mt-2">
+                                                    <small class="text-muted">
+                                                        آخر جمع: {{ bin.last_collected.strftime('%Y-%m-%d') if
+                                                        bin.last_collected else 'لم يتم الجمع' }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="mt-3">
+                            <button class="btn btn-outline-primary btn-sm" onclick="selectAllFullBins()">
+                                <i class="fas fa-check-double"></i> تحديد جميع الحاويات الممتلئة
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="clearAllSelections()">
+                                <i class="fas fa-times"></i> إلغاء التحديد
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Task Details -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cog"></i> تفاصيل المهمة
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="taskForm">
+                            <!-- Driver Selection -->
+                            <div class="mb-3">
+                                <label for="driverSelect" class="form-label">السائق</label>
+                                <select class="form-select" id="driverSelect" name="driver_id" required>
+                                    <option value="">اختر سائق...</option>
+                                    {% for driver in drivers %}
+                                    <!-- افترض أن driver.vehicle_id هو معرف الـ Vehicle (رقم) -->
+                                    <option value="{{ driver.id }}" data-vehicle="{{ driver.vehicle_id }}">
+                                        {{ driver.user.name }} - {{ driver.vehicle_id }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Vehicle Info (Auto-filled based on driver) -->
+                            <div class="mb-3">
+                                <label for="vehicleInfo" class="form-label">المركبة</label>
+                                <input type="text" class="form-control" id="vehicleInfo" readonly>
+                                <!-- hidden input to send to backend -->
+                                <input type="hidden" id="vehicleIdInput" name="vehicle_id" value="">
+                            </div>
+
+                            <!-- Priority -->
+                            <div class="mb-3">
+                                <label for="prioritySelect" class="form-label">الأولوية</label>
+                                <select class="form-select" id="prioritySelect" name="priority">
+                                    <option value="normal">عادية</option>
+                                    <option value="high">عالية</option>
+                                    <option value="urgent">عاجلة</option>
+                                </select>
+                            </div>
+
+                            <!-- Scheduled Time -->
+                            <div class="mb-3">
+                                <label for="scheduledTime" class="form-label">وقت التنفيذ</label>
+                                <input type="datetime-local" class="form-control" id="scheduledTime"
+                                    name="scheduled_time" required>
+                            </div>
+
+                            <!-- Project -->
+                            <div class="mb-3">
+                                <label for="projectSelect" class="form-label">المشروع</label>
+                                <select class="form-select" id="projectSelect" name="project">
+                                    <option value="default">المشروع الافتراضي</option>
+                                    <option value="city_center">وسط المدينة</option>
+                                    <option value="residential">الأحياء السكنية</option>
+                                    <option value="commercial">المناطق التجارية</option>
+                                </select>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="mb-3">
+                                <label for="taskNotes" class="form-label">ملاحظات</label>
+                                <textarea class="form-control" id="taskNotes" name="notes" rows="3"
+                                    placeholder="أي ملاحظات إضافية..."></textarea>
+                            </div>
+
+                            <!-- Route Optimization -->
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="optimizeRoute" checked>
+                                    <label class="form-check-label" for="optimizeRoute">
+                                        تحسين المسار تلقائياً
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Estimated Duration -->
+                            <div class="mb-3">
+                                <label class="form-label">المدة المتوقعة</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="estimatedDuration" value="0" readonly>
+                                    <span class="input-group-text">دقيقة</span>
+                                </div>
+                            </div>
+
+                            <!-- Distance -->
+                            <div class="mb-3">
+                                <label class="form-label">المسافة المتوقعة</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="estimatedDistance" value="0" readonly>
+                                    <span class="input-group-text">كم</span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary btn-lg" onclick="createTask()" id="createTaskBtn">
+                                <i class="fas fa-plus"></i> إنشاء المهمة
+                            </button>
+                            <button class="btn btn-outline-info" onclick="previewRoute()" id="previewRouteBtn" disabled>
+                                <i class="fas fa-map"></i> معاينة المسار
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="saveAsDraft()">
+                                <i class="fas fa-save"></i> حفظ كمسودة
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Route Preview Section -->
+        <div class="row mt-4" id="routePreviewSection" style="display: none;">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-route"></i> معاينة المسار
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div id="routeMap" style="height: 400px; width: 100%; border-radius: 8px;"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>تفاصيل المسار</h6>
+                                <div class="route-details">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>عدد الحاويات:</span>
+                                        <span id="routeBinsCount">0</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>المسافة الإجمالية:</span>
+                                        <span id="routeTotalDistance">0 كم</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>المدة المتوقعة:</span>
+                                        <span id="routeTotalDuration">0 دقيقة</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>وقت البداية:</span>
+                                        <span id="routeStartTime">-</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>وقت الانتهاء:</span>
+                                        <span id="routeEndTime">-</span>
+                                    </div>
+                                </div>
+
+                                <h6 class="mt-4">ترتيب الحاويات</h6>
+                                <div id="routeBinsList" class="route-bins-list">
+                                    <!-- Will be populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bin-item {
+        transition: all 0.3s ease;
+    }
+
+    .bin-item:hover {
+        background-color: rgba(52, 152, 219, 0.05);
+    }
+
+    .bin-item.selected {
+        background-color: rgba(52, 152, 219, 0.1);
+        border-color: var(--primary-color) !important;
+    }
+
+    .route-bins-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .route-bin-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem;
+        border-bottom: 1px solid #eee;
+    }
+
+    .route-bin-item:last-child {
+        border-bottom: none;
+    }
+
+    .route-bin-number {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-left: 0.5rem;
+    }
+
+    .form-check-input:checked+.form-check-label {
+        color: var(--primary-color);
+    }
+
+    #createTaskBtn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    #previewRouteBtn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* Route Map Styles */
+    #routeMap {
+        border: 1px solid #ddd;
+    }
+
+    .depot-marker {
+        background: transparent;
+        border: none;
+        text-align: center;
+    }
+
+    .leaflet-routing-container {
+        display: none;
+        /* Hide the routing instructions panel */
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Task creation functions
+    let selectedBins = [];
+    let routeOptimized = false;
+    let routeMap = null;
+    let routeMarkers = [];
+    let routeLine = null;
+    let binData = [];
+
+    // Initialize form
+    document.addEventListener('DOMContentLoaded', function () {
+        // Load bin data from API
+        fetch('/api/bins/full')
+            .then(response => response.json())
+            .then(data => {
+                binData = data.bins;
+                console.log('Bin data loaded:', binData.length, 'bins');
+            })
+            .catch(error => {
+                console.error('Error loading bin data:', error);
+            });
+
+        // Set default scheduled time to current time + 1 hour
+        const now = new Date();
+        now.setHours(now.getHours() + 1);
+        document.getElementById('scheduledTime').value = now.toISOString().slice(0, 16);
+
+        // Auto-fill vehicle info when driver is selected
+        document.getElementById('driverSelect').addEventListener('change', function () {
+            const selectedOption = this.options[this.selectedIndex];
+            const vehicleId = selectedOption.getAttribute('data-vehicle');
+            document.getElementById('vehicleInfo').value = vehicleId || '';
+            updateCreateButtonState();
+        });
+
+        // Update create button state when bins are selected
+        document.querySelectorAll('.bin-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function () {
+                updateSelectedBins();
+                updateCreateButtonState();
+            });
+        });
+
+        // Update estimated duration and distance when bins change
+        document.getElementById('binSearch').addEventListener('input', filterBins);
+        document.getElementById('binStatusFilter').addEventListener('change', filterBins);
+        document.getElementById('binLocationFilter').addEventListener('change', filterBins);
+    });
+
+    function updateSelectedBins() {
+        selectedBins = [];
+        document.querySelectorAll('.bin-checkbox:checked').forEach(checkbox => {
+            selectedBins.push(checkbox.value);
+        });
+
+        // Update summary
+        const summary = document.getElementById('selectedBinsSummary');
+        const count = document.getElementById('selectedBinsCount');
+
+        if (selectedBins.length > 0) {
+            summary.style.display = 'block';
+            count.textContent = selectedBins.length;
+
+            // Update estimated duration and distance
+            updateEstimates();
+        } else {
+            summary.style.display = 'none';
+            document.getElementById('estimatedDuration').value = 0;
+            document.getElementById('estimatedDistance').value = 0;
+        }
+
+        // Update visual selection
+        document.querySelectorAll('.bin-item').forEach(item => {
+            const checkbox = item.querySelector('.bin-checkbox');
+            if (checkbox.checked) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    function updateEstimates() {
+        // Simple estimation: 10 minutes per bin + 2 minutes per km
+        const binsCount = selectedBins.length;
+        const estimatedMinutes = binsCount * 10; // 10 minutes per bin
+        const estimatedKm = binsCount * 0.5; // 0.5 km average between bins
+
+        document.getElementById('estimatedDuration').value = estimatedMinutes;
+        document.getElementById('estimatedDistance').value = estimatedKm.toFixed(1);
+    }
+
+    function updateCreateButtonState() {
+        const driverSelected = document.getElementById('driverSelect').value !== '';
+        const binsSelected = selectedBins.length > 0;
+        const scheduledTime = document.getElementById('scheduledTime').value !== '';
+
+        const canCreate = driverSelected && binsSelected && scheduledTime;
+        document.getElementById('createTaskBtn').disabled = !canCreate;
+        document.getElementById('previewRouteBtn').disabled = !canCreate;
+    }
+
+    function selectAllFullBins() {
+        document.querySelectorAll('.bin-checkbox').forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        updateSelectedBins();
+        updateCreateButtonState();
+    }
+
+    function clearAllSelections() {
+        document.querySelectorAll('.bin-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        updateSelectedBins();
+        updateCreateButtonState();
+    }
+
+    function filterBins() {
+        const searchTerm = document.getElementById('binSearch').value.toLowerCase();
+        const statusFilter = document.getElementById('binStatusFilter').value;
+        const locationFilter = document.getElementById('binLocationFilter').value.toLowerCase();
+
+        document.querySelectorAll('.bin-item').forEach(item => {
+            const binId = item.querySelector('h6').textContent.toLowerCase();
+            const location = item.querySelector('p').textContent.toLowerCase();
+            const fillLevel = parseInt(item.dataset.fillLevel);
+
+            let matchesSearch = binId.includes(searchTerm) || location.includes(searchTerm);
+            let matchesStatus = true;
+            let matchesLocation = true;
+
+            if (statusFilter === 'full') {
+                matchesStatus = fillLevel >= 80;
+            } else if (statusFilter === 'half') {
+                matchesStatus = fillLevel >= 40 && fillLevel < 80;
+            } else if (statusFilter === 'empty') {
+                matchesStatus = fillLevel < 40;
+            }
+
+            if (locationFilter) {
+                matchesLocation = location.includes(locationFilter);
+            }
+
+            item.style.display = (matchesSearch && matchesStatus && matchesLocation) ? 'block' : 'none';
+        });
+    }
+
+    function clearBinFilters() {
+        document.getElementById('binSearch').value = '';
+        document.getElementById('binStatusFilter').value = '';
+        document.getElementById('binLocationFilter').value = '';
+
+        document.querySelectorAll('.bin-item').forEach(item => {
+            item.style.display = 'block';
+        });
+    }
+
+    // function createTask() {
+    //     if (selectedBins.length === 0) {
+    //         alert('يرجى اختيار حاوية واحدة على الأقل');
+    //         return;
+    //     }
+
+    //     const form = document.getElementById('taskForm');
+    //     const formData = new FormData(form);
+
+    //     // Add selected bins
+    //     formData.append('bin_ids', JSON.stringify(selectedBins));
+
+    //     // Show loading state
+    //     const createBtn = document.getElementById('createTaskBtn');
+    //     const originalText = createBtn.innerHTML;
+    //     createBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإنشاء...';
+    //     createBtn.disabled = true;
+
+    //     // Simulate API call
+    //     setTimeout(() => {
+    //         console.log('Creating task with data:', Object.fromEntries(formData));
+
+    //         // Reset button
+    //         createBtn.innerHTML = originalText;
+    //         createBtn.disabled = false;
+
+    //         // Show success message
+    //         alert('تم إنشاء المهمة بنجاح!');
+
+    //         // Redirect to dashboard or task list
+    //         window.location.href = '{{ url_for("main.dashboard") }}';
+    //     }, 2000);
+    // }
+    async function createTask() {
+    if (selectedBins.length === 0) {
+        alert('يرجى اختيار حاوية واحدة على الأقل');
+        return;
+    }
+
+    const form = document.getElementById('taskForm');
+    const formData = new FormData(form);
+
+    // Add selected bins (JSON string → backend expects list)
+    formData.set('bin_ids', JSON.stringify(selectedBins));
+
+    // Add vehicle_id (your backend requires it)
+    const driverSelect = document.getElementById('driverSelect');
+    const selectedOption = driverSelect.options[driverSelect.selectedIndex];
+    const vehicleId = selectedOption.getAttribute('data-vehicle');
+    
+    if (!vehicleId) {
+        alert('يرجى اختيار سائق يحتوي على مركبة');
+        return;
+    }
+    formData.set('vehicle_id', vehicleId);
+
+    // Convert FormData → plain object → JSON
+    const payload = Object.fromEntries(formData);
+
+    // Show loading state
+    const createBtn = document.getElementById('createTaskBtn');
+    const originalText = createBtn.innerHTML;
+    createBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإنشاء...';
+    createBtn.disabled = true;
+
+    try {
+        const response = await fetch('{{ url_for("task_api.api_create_task") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'فشل في إنشاء المهمة');
+        }
+
+        console.log('Task created:', data);
+        alert('تم إنشاء المهمة بنجاح!');
+
+        // Redirect to dashboard
+        window.location.href = '{{ url_for("main.dashboard") }}';
+    } catch (err) {
+        console.error(err);
+        alert('خطأ: ' + err.message);
+    } finally {
+        createBtn.innerHTML = originalText;
+        createBtn.disabled = false;
+    }
+}
+
+    function previewRoute() {
+        if (selectedBins.length === 0) {
+            alert('يرجى اختيار حاوية واحدة على الأقل');
+            return;
+        }
+
+        // Show route preview section
+        document.getElementById('routePreviewSection').style.display = 'block';
+
+        // Update route details
+        document.getElementById('routeBinsCount').textContent = selectedBins.length;
+        document.getElementById('routeTotalDistance').textContent = document.getElementById('estimatedDistance').value + ' كم';
+        document.getElementById('routeTotalDuration').textContent = document.getElementById('estimatedDuration').value + ' دقيقة';
+
+        const scheduledTime = new Date(document.getElementById('scheduledTime').value);
+        document.getElementById('routeStartTime').textContent = scheduledTime.toLocaleTimeString('ar-SA');
+
+        const endTime = new Date(scheduledTime.getTime() + parseInt(document.getElementById('estimatedDuration').value) * 60000);
+        document.getElementById('routeEndTime').textContent = endTime.toLocaleTimeString('ar-SA');
+
+        // Initialize map if not already created
+        initializeRouteMap();
+
+        // Generate route bins list
+        const routeBinsList = document.getElementById('routeBinsList');
+        routeBinsList.innerHTML = '';
+
+        selectedBins.forEach((binId, index) => {
+            const binItem = document.querySelector(`[data-bin-id="${binId}"]`);
+            if (binItem) {
+                const binIdText = binItem.querySelector('h6').textContent;
+                const binLocation = binItem.querySelector('p').textContent;
+
+                const routeItem = document.createElement('div');
+                routeItem.className = 'route-bin-item';
+                routeItem.innerHTML = `
+                <div class="route-bin-number">${index + 1}</div>
+                <div>
+                    <div class="fw-bold">${binIdText}</div>
+                    <small class="text-muted">${binLocation}</small>
+                </div>
+            `;
+                routeBinsList.appendChild(routeItem);
+            }
+        });
+
+        // Add bins to map and create route
+        addBinsToRouteMap();
+
+        // Scroll to route preview
+        document.getElementById('routePreviewSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function saveAsDraft() {
+        const form = document.getElementById('taskForm');
+        const formData = new FormData(form);
+        formData.append('bin_ids', JSON.stringify(selectedBins));
+        formData.append('status', 'draft');
+
+        console.log('Saving as draft:', Object.fromEntries(formData));
+        alert('تم حفظ المهمة كمسودة');
+    }
+
+    // Handle URL parameters for pre-selected bins or drivers
+    document.addEventListener('DOMContentLoaded', function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const preSelectedBins = urlParams.get('bins');
+        const preSelectedDriver = urlParams.get('driver');
+
+        if (preSelectedBins) {
+            const binIds = preSelectedBins.split(',');
+            binIds.forEach(binId => {
+                const checkbox = document.querySelector(`input[value="${binId}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+            updateSelectedBins();
+            updateCreateButtonState();
+        }
+
+        if (preSelectedDriver) {
+            document.getElementById('driverSelect').value = preSelectedDriver;
+            const selectedOption = document.getElementById('driverSelect').options[document.getElementById('driverSelect').selectedIndex];
+            const vehicleId = selectedOption.getAttribute('data-vehicle');
+            document.getElementById('vehicleInfo').value = vehicleId || '';
+            updateCreateButtonState();
+        }
+    });
+
+    // Route map functions
+    function initializeRouteMap() {
+        if (!routeMap) {
+            // Initialize Leaflet map
+            routeMap = L.map('routeMap').setView([24.6262, 46.5631], 12); // Default to Riyadh
+
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(routeMap);
+
+            // Add some delay to ensure map container is visible
+            setTimeout(() => {
+                routeMap.invalidateSize();
+            }, 100);
+        }
+    }
+
+    function addBinsToRouteMap() {
+        if (!routeMap) return;
+
+        // Clear existing markers and routes
+        routeMarkers.forEach(marker => routeMap.removeLayer(marker));
+        routeMarkers = [];
+        if (routeLine) {
+            routeMap.removeLayer(routeLine);
+            routeLine = null;
+        }
+
+        const waypoints = [];
+
+        // Add markers for selected bins
+        selectedBins.forEach((binId, index) => {
+            const binItem = document.querySelector(`[data-bin-id="${binId}"]`);
+            if (binItem) {
+                // Extract bin coordinates from the page
+                const binInfo = extractBinCoordinates(binId);
+                if (binInfo) {
+                    // Create marker
+                    const marker = L.marker([binInfo.lat, binInfo.lng]).addTo(routeMap);
+                    marker.bindPopup(`
+                    <div style="text-align: center; font-family: 'Cairo', sans-serif;">
+                        <h6>${binInfo.bin_id}</h6>
+                        <p><i class="fas fa-map-marker-alt"></i> ${binInfo.location}</p>
+                        <p><i class="fas fa-list-ol"></i> نقطة رقم ${index + 1}</p>
+                    </div>
+                `);
+
+                    routeMarkers.push(marker);
+                    waypoints.push(L.latLng(binInfo.lat, binInfo.lng));
+                }
+            }
+        });
+
+        // Create route between waypoints if more than one bin
+        if (waypoints.length > 1) {
+            // Add depot as starting point (you can customize this)
+            const depot = L.latLng(24.6333, 46.5731); // Example depot location
+            waypoints.unshift(depot);
+
+            // Add depot marker
+            const depotMarker = L.marker([24.6333, 46.5731], {
+                icon: L.divIcon({
+                    className: 'depot-marker',
+                    html: '<i class="fas fa-warehouse" style="color: #007bff; font-size: 20px;"></i>',
+                    iconSize: [30, 30]
+                })
+            }).addTo(routeMap);
+            depotMarker.bindPopup('<div style="text-align: center;"><h6>نقطة الانطلاق</h6></div>');
+            routeMarkers.push(depotMarker);
+
+            // Create routing control
+            const routingControl = L.Routing.control({
+                waypoints: waypoints,
+                routeWhileDragging: false,
+                addWaypoints: false,
+                createMarker: function () { return null; }, // Don't create duplicate markers
+                lineOptions: {
+                    styles: [{
+                        color: '#007bff',
+                        weight: 4,
+                        opacity: 0.7
+                    }]
+                },
+                router: L.Routing.osrmv1({
+                    serviceUrl: 'https://router.project-osrm.org/route/v1'
+                })
+            }).addTo(routeMap);
+
+            // Fit map to show all markers
+            const group = new L.featureGroup(routeMarkers);
+            routeMap.fitBounds(group.getBounds().pad(0.1));
+        } else if (waypoints.length === 1) {
+            // Center map on single bin
+            routeMap.setView(waypoints[0], 15);
+        }
+    }
+
+    function extractBinCoordinates(binId) {
+        // Get bin coordinates from the API
+        if (binData.length === 0) {
+            // Fetch bin data if not loaded
+            fetch('/api/bins/full')
+                .then(response => response.json())
+                .then(data => {
+                    binData = data.bins;
+                    const bin = binData.find(b => b.id == binId);
+                    return bin;
+                })
+                .catch(error => {
+                    console.error('Error fetching bin data:', error);
+                    return null;
+                });
+        }
+
+        const bin = binData.find(b => b.id == binId);
+        return bin || null;
+    }
+
+    // Update estimates to include better calculations
+    function updateEstimates() {
+        const binsCount = selectedBins.length;
+        const estimatedMinutes = Math.max(30, binsCount * 15); // At least 30 minutes, 15 min per bin
+        const estimatedKm = Math.max(5, binsCount * 2); // At least 5 km, 2 km per bin
+
+        document.getElementById('estimatedDuration').value = estimatedMinutes;
+        document.getElementById('estimatedDistance').value = estimatedKm.toFixed(1);
+    }
+</script>
+{% endblock %}

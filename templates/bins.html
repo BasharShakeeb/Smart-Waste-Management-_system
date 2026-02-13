@@ -1,0 +1,914 @@
+{% extends "base.html" %}
+
+{% block title %}إدارة الحاويات - Collect Me IoT{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<header class="main-header">
+    <div class="header-content">
+        <div class="logo-section">
+            <i class="fas fa-recycle"></i>
+            <h1>Collect Me IoT</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline-light btn-sm" onclick="toggleLanguage()">
+                <i class="fas fa-globe"></i> العربية
+            </button>
+            <div class="user-info">
+                <div class="user-avatar">{{ session.name[0] if session.name else 'A' }}</div>
+                <span>{{ session.name if session.name else 'المدير' }}</span>
+                <a href="{{ url_for('main.logout') }}" class="btn btn-outline-light btn-sm ms-2">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Sidebar -->
+<nav class="main-sidebar">
+    <div class="sidebar-nav">
+        <div class="nav-item">
+            <a href="{{ url_for('main.dashboard') }}" class="nav-link">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>لوحة التحكم</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.bins_management') }}" class="nav-link active">
+                <i class="fas fa-trash-alt"></i>
+                <span>الحاويات</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.live_map') }}" class="nav-link">
+                <i class="fas fa-map-marked-alt"></i>
+                <span>الخريطة الحية</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.drivers_management') }}" class="nav-link">
+                <i class="fas fa-users"></i>
+                <span>السائقون</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.create_task') }}" class="nav-link">
+                <i class="fas fa-tasks"></i>
+                <span>إنشاء مهمة</span>
+            </a>
+        </div>
+        <!-- Reports navigation removed -->
+        <div class="nav-item">
+            <a href="#" class="nav-link">
+                <i class="fas fa-cog"></i>
+                <span>الإعدادات</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main-content">
+    <div class="container-fluid">
+        <!-- Page Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-1">إدارة الحاويات</h2>
+                        <p class="text-muted mb-0">مراقبة وإدارة جميع حاويات النفايات</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-success" onclick="showAddBinModal()">
+                            <i class="fas fa-plus"></i> إضافة حاوية
+                        </button>
+                        <button class="btn btn-primary" onclick="refreshBins()">
+                            <i class="fas fa-sync-alt"></i> تحديث
+                        </button>
+                        <span class="badge bg-success ms-2" id="realtime-status">
+                            <i class="fas fa-wifi"></i> متصل مباشر
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters and Search -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label for="searchInput" class="form-label">البحث</label>
+                                <input type="text" class="form-control" id="searchInput" placeholder="ابحث عن حاوية أو موقع...">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="statusFilter" class="form-label">الحالة</label>
+                                <select class="form-select" id="statusFilter">
+                                    <option value="">جميع الحالات</option>
+                                    <option value="full">ممتلئ</option>
+                                    <option value="half">نصف ممتلئ</option>
+                                    <option value="empty">فارغ</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="fillLevelMin" class="form-label">أقل مستوى امتلاء</label>
+                                <input type="number" class="form-control" id="fillLevelMin" min="0" max="100" placeholder="0">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="fillLevelMax" class="form-label">أعلى مستوى امتلاء</label>
+                                <input type="number" class="form-control" id="fillLevelMax" min="0" max="100" placeholder="100">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="locationFilter" class="form-label">الموقع</label>
+                                <select class="form-select" id="locationFilter">
+                                    <option value="">جميع المواقع</option>
+                                    <option value="main">الشارع الرئيسي</option>
+                                    <option value="park">المنتزه</option>
+                                    <option value="downtown">وسط المدينة</option>
+                                    <option value="shopping">مركز التسوق</option>
+                                </select>
+                            </div>
+                            <div class="col-md-1 d-flex align-items-end">
+                                <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bins Statistics -->
+        <div class="row mb-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon primary">
+                        <i class="fas fa-trash-alt"></i>
+                    </div>
+                    <div class="stats-number">{{ bins|length }}</div>
+                    <div class="stats-label">إجمالي الحاويات</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stats-number">{{ bins|selectattr('fill_level', '>=', 80)|list|length }}</div>
+                    <div class="stats-label">حاويات ممتلئة</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon warning">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <div class="stats-number">{{ bins|selectattr('fill_level', '>=', 40)|selectattr('fill_level', '<', 80)|list|length }}</div>
+                    <div class="stats-label">حاويات نصف ممتلئة</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stats-number">{{ bins|selectattr('fill_level', '<', 40)|list|length }}</div>
+                    <div class="stats-label">حاويات فارغة</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bins Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-list"></i> قائمة الحاويات
+                            </h5>
+                            <div>
+                                <button class="btn btn-outline-primary btn-sm" onclick="exportBinsData()">
+                                    <i class="fas fa-download"></i> تصدير CSV
+                                </button>
+                                <button class="btn btn-outline-success btn-sm" onclick="exportBinsPDF()">
+                                    <i class="fas fa-file-pdf"></i> تصدير PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-container">
+                            <table class="table table-hover" id="binsTable">
+                                <thead>
+                                    <tr>
+                                        <th>
+                                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                        </th>
+                                        <th>معرف الحاوية</th>
+                                        <th>الموقع</th>
+                                        <th>مستوى الامتلاء</th>
+                                        <!--
+                                        <th>درجة الحرارة</th>
+                                        <th>زاوية الميل</th>
+                                        -->
+                                        <th>مستوى البطارية</th>
+                                        <th>الحالة</th>
+                                        <th>آخر جمع</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bins-table">
+                                    {% for bin in bins %}
+                                    <tr data-bin-id="{{ bin.bin_id }}" data-fill-level="{{ bin.fill_level }}" data-location="{{ bin.location }}">
+                                        <td>
+                                            <input type="checkbox" class="bin-checkbox" value="{{ bin.id }}">
+                                        </td>
+                                        <td>
+                                            <strong>{{ bin.bin_id }}</strong>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <div class="fw-bold">{{ bin.location }}</div>
+                                                {% if bin.latitude and bin.longitude %}
+                                                <small class="text-muted">
+                                                    <i class="fas fa-map-marker-alt"></i> 
+                                                    {{ "%.4f"|format(bin.latitude) }}, {{ "%.4f"|format(bin.longitude) }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="fill-level">
+                                                <span class="me-2 fw-bold fill-level-text">{{ bin.fill_level }}%</span>
+                                                <div class="fill-bar">
+                                                    <div class="fill-progress progress-bar {{ 'high' if bin.fill_level >= 80 else 'medium' if bin.fill_level >= 40 else 'low' }}" 
+                                                         style="width: {{ bin.fill_level }}%"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <!--
+                                        <td>
+                                            <span class="badge bg-info temperature-badge">
+                                                <i class="fas fa-thermometer-half"></i> 
+                                                <span class="temperature-value">{{ bin.temperature if bin.temperature else 'N/A' }}</span>°C
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-angle-right"></i> 
+                                                {{ bin.angle if bin.angle else 'N/A' }}°
+                                            </span>
+                                        </td>
+                                        -->
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="battery-level me-2">
+                                                    <div class="battery-bar">
+                                                        <div class="battery-fill" style="width: {{ bin.battery_level }}%"></div>
+                                                    </div>
+                                                </div>
+                                                <span class="small battery-percentage">{{ bin.battery_level }}%</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge">
+                                                <!--{{ 'ممتلئ' if bin.fill_level >= 80 else 'نصف ممتلئ' if bin.fill_level >= 40 else 'فارغ' }}-->
+                                                 {{ bin.status}}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if bin.last_collected %}
+                                                <div>
+                                                    <div>{{ bin.last_collected.strftime('%Y-%m-%d') }}</div>
+                                                    <small class="text-muted">{{ bin.last_collected.strftime('%H:%M') }}</small>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">لم يتم الجمع</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-outline-primary btn-sm" onclick="viewBinDetails('{{ bin.id }}')" title="عرض التفاصيل">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-warning btn-sm" onclick="editBin('{{ bin.id }}')" title="تعديل">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                {% if bin.fill_level >= 80 %}
+                                                <button class="btn btn-outline-success btn-sm" onclick="createTaskForBin('{{ bin.id }}')" title="إنشاء مهمة">
+                                                    <i class="fas fa-tasks"></i>
+                                                </button>
+                                                {% endif %}
+                                                <button class="btn btn-outline-danger btn-sm" onclick="deleteBin('{{ bin.id }}')" title="حذف">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span id="selectedCount">0</span> حاوية محددة
+                            </div>
+                            <div>
+                                <button class="btn btn-success" onclick="createBulkTask()" disabled id="bulkTaskBtn">
+                                    <i class="fas fa-tasks"></i> إنشاء مهمة للحاويات المحددة
+                                </button>
+                                <button class="btn btn-warning" onclick="exportSelectedBins()" disabled id="bulkExportBtn">
+                                    <i class="fas fa-download"></i> تصدير المحدد
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Add Bin Modal -->
+<div class="modal fade" id="addBinModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">إضافة حاوية جديدة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addBinForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="binId" class="form-label">معرف الحاوية</label>
+                                <input type="text" class="form-control" id="binId" name="bin_id" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="binLocation" class="form-label">الموقع</label>
+                                <input type="text" class="form-control" id="binLocation" name="location" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="binLatitude" class="form-label">خط العرض</label>
+                                <input type="number" step="any" class="form-control" id="binLatitude" name="latitude">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="binLongitude" class="form-label">خط الطول</label>
+                                <input type="number" step="any" class="form-control" id="binLongitude" name="longitude">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="binCapacity" class="form-label">السعة (لتر)</label>
+                                <input type="number" class="form-control" id="binCapacity" name="capacity">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">الحالة
+                                <label for="binType" class="form-label">نوع الحاوية</label>
+                                <select class="form-select" id="binType" name="type">
+                                    <option value="general">عامة</option>
+                                    <option value="recyclable">قابلة لإعادة التدوير</option>
+                                    <option value="organic">عضوية</option>
+                                    <option value="hazardous">خطرة</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddBin()">إضافة</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bin Details Modal -->
+<div class="modal fade" id="binDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تفاصيل الحاوية</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="binDetailsContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                <button type="button" class="btn btn-primary" onclick="editBinFromDetails()">تعديل</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Bin Modal -->
+<div class="modal fade" id="editBinModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تعديل الحاوية</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editBinForm">
+                    <input type="hidden" id="editBinId" name="bin_id">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editBinIdentifier" class="form-label">معرف الحاوية</label>
+                                <input type="text" class="form-control" id="editBinIdentifier" name="bin_id" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editBinLocation" class="form-label">الموقع</label>
+                                <input type="text" class="form-control" id="editBinLocation" name="location" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editBinAddress" class="form-label">العنوان المفصل</label>
+                        <input type="text" class="form-control" id="editBinAddress" name="address">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editBinLatitude" class="form-label">خط العرض</label>
+                                <input type="number" step="any" class="form-control" id="editBinLatitude" name="latitude">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editBinLongitude" class="form-label">خط الطول</label>
+                                <input type="number" step="any" class="form-control" id="editBinLongitude" name="longitude">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editBinCapacity" class="form-label">السعة (لتر)</label>
+                                <input type="number" class="form-control" id="editBinCapacity" name="capacity">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editBinType" class="form-label">نوع الحاوية</label>
+                                <select class="form-select" id="editBinType" name="bin_type">
+                                    <option value="general">عامة</option>
+                                    <option value="recyclable">قابلة لإعادة التدوير</option>
+                                    <option value="organic">عضوية</option>
+                                    <option value="hazardous">خطرة</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editBinStatus" class="form-label">الحالة</label>
+                        <select class="form-select" id="editBinStatus" name="status">
+                            <option value="active">نشطة</option>
+                            <option value="inactive">غير نشطة</option>
+                            <option value="maintenance">صيانة</option>
+                            <option value="error">خطأ</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editBinNotes" class="form-label">ملاحظات</label>
+                        <textarea class="form-control" id="editBinNotes" name="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditBin()">حفظ التغييرات</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.battery-level {
+    width: 30px;
+    height: 15px;
+}
+
+.battery-bar {
+    width: 100%;
+    height: 100%;
+    border: 1px solid #ddd;
+    border-radius: 2px;
+    overflow: hidden;
+    background: #f8f9fa;
+}
+
+.battery-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #28a745, #20c997);
+    transition: width 0.3s ease;
+}
+
+.table tbody tr.selected {
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
+#selectedCount {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Bins management functions - Updated to use REST API
+function refreshBins() {
+    // if (socket && socket.connected) {
+    //     socket.emit('request_bin_data');
+    //     showNotification('تم تحديث البيانات', 'success');
+    // } else {
+    //     location.reload();
+    // }
+    location.reload();
+}
+
+function showAddBinModal() {
+    // Reset form
+    document.getElementById('addBinForm').reset();
+    const modal = new bootstrap.Modal(document.getElementById('addBinModal'));
+    modal.show();
+}
+
+function submitAddBin() {
+    const form = document.getElementById('addBinForm');
+    const formData = new FormData(form);
+    
+    // Convert FormData to JSON
+    const data = {};
+    for (let [key, value] of formData.entries()) {
+        if (value !== '') {
+            // Convert numeric fields
+            if (['latitude', 'longitude', 'capacity', 'fill_level', 'temperature', 'battery_level'].includes(key)) {
+                data[key] = parseFloat(value) || 0;
+            } else {
+                data[key] = value;
+            }
+        }
+    }
+    
+    // Validate required fields
+    if (!data.bin_id || !data.location) {
+        showNotification('يرجى ملء جميع الحقول المطلوبة', 'error');
+        return;
+    }
+    
+    // Send API request
+    fetch('/api/bins', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            showNotification(data.message, 'success');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addBinModal'));
+            modal.hide();
+            refreshBins();
+        } else {
+            showNotification(data.error || 'حدث خطأ في إضافة الحاوية', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ في الاتصال', 'error');
+    });
+}
+
+function viewBinDetails(binId) {
+    // Load bin details using API
+    fetch(`/api/bins/${binId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.bin) {
+                const bin = data.bin;
+                document.getElementById('binDetailsContent').innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>معلومات الحاوية</h6>
+                            <p><strong>معرف الحاوية:</strong> ${bin.bin_id}</p>
+                            <p><strong>الموقع:</strong> ${bin.location}</p>
+                            <p><strong>العنوان:</strong> ${bin.address || 'غير محدد'}</p>
+                            <p><strong>مستوى الامتلاء:</strong> ${bin.fill_level}%</p>
+                            
+                        </div>
+                        <div class="col-md-6">
+                            <h6>حالة النظام</h6>
+                            <p><strong>السعة:</strong> ${bin.capacity} لتر</p>
+                            <p><strong>نوع الحاوية:</strong> ${getBinTypeText(bin.bin_type)}</p>
+                            <p><strong>مستوى البطارية:</strong> ${bin.battery_level}%</p>
+                            <p><strong>الحالة:</strong> ${getStatusText(bin.status)}</p>
+                            <p><strong>آخر جمع:</strong> ${bin.last_collected ? new Date(bin.last_collected).toLocaleString('ar-SA') : 'لم يتم الجمع'}</p>
+                            <p><strong>تاريخ التركيب:</strong> ${new Date(bin.installation_date).toLocaleDateString('ar-SA')}</p>
+                        </div>
+                    </div>
+                    ${bin.notes ? `<div class="mt-3"><strong>ملاحظات:</strong><br>${bin.notes}</div>` : ''}
+                `;
+                
+                const modal = new bootstrap.Modal(document.getElementById('binDetailsModal'));
+                modal.show();
+            } else {
+                showNotification(data.error || 'حدث خطأ في تحميل تفاصيل الحاوية', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ في الاتصال', 'error');
+        });
+}
+
+function editBin(binId) {
+    // Load bin data and open edit modal
+    fetch(`/api/bins/${binId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.bin) {
+                const bin = data.bin;
+                // Populate edit form
+                document.getElementById('editBinId').value = bin.id;
+                document.getElementById('editBinIdentifier').value = bin.bin_id;
+                document.getElementById('editBinLocation').value = bin.location;
+                document.getElementById('editBinAddress').value = bin.address || '';
+                document.getElementById('editBinLatitude').value = bin.latitude || '';
+                document.getElementById('editBinLongitude').value = bin.longitude || '';
+                document.getElementById('editBinCapacity').value = bin.capacity;
+                document.getElementById('editBinType').value = bin.bin_type;
+                document.getElementById('editBinStatus').value = bin.status;
+                document.getElementById('editBinNotes').value = bin.notes || '';
+                
+                const modal = new bootstrap.Modal(document.getElementById('editBinModal'));
+                modal.show();
+            } else {
+                showNotification(data.error || 'حدث خطأ في تحميل بيانات الحاوية', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ في الاتصال', 'error');
+        });
+}
+
+function submitEditBin() {
+    const binId = document.getElementById('editBinId').value;
+    const form = document.getElementById('editBinForm');
+    const formData = new FormData(form);
+    
+    // Convert FormData to JSON
+    const data = {};
+    for (let [key, value] of formData.entries()) {
+        if (key !== 'bin_id' && value !== '') {  // Skip bin_id and empty values
+            // Convert numeric fields
+            if (['latitude', 'longitude', 'capacity'].includes(key)) {
+                data[key] = parseFloat(value) || null;
+            } else {
+                data[key] = value;
+            }
+        }
+    }
+    
+    // Send API request
+    fetch(`/api/bins/${binId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            showNotification(data.message, 'success');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editBinModal'));
+            modal.hide();
+            refreshBins();
+        } else {
+            showNotification(data.error || 'حدث خطأ في تحديث الحاوية', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('حدث خطأ في الاتصال', 'error');
+    });
+}
+
+function createTaskForBin(binId) {
+    window.location.href = `/create-task?bins=${binId}`;
+}
+
+function deleteBin(binId) {
+    if (confirm('هل أنت متأكد من حذف هذه الحاوية؟ هذا الإجراء لا يمكن التراجع عنه.')) {
+        fetch(`/api/bins/${binId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                showNotification(data.message, 'success');
+                refreshBins();
+            } else {
+                showNotification(data.error || 'حدث خطأ في حذف الحاوية', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('حدث خطأ في الاتصال', 'error');
+        });
+    }
+}
+
+// Helper functions
+function getBinTypeText(type) {
+    const types = {
+        'general': 'عامة',
+        'recyclable': 'قابلة لإعادة التدوير',
+        'organic': 'عضوية',
+        'hazardous': 'خطرة'
+    };
+    return types[type] || type;
+}
+
+function getStatusText(status) {
+    const statuses = {
+        'active': 'نشطة',
+        'inactive': 'غير نشطة',
+        'maintenance': 'صيانة',
+        'error': 'خطأ'
+    };
+    return statuses[status] || status;
+}
+
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 5000);
+}
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.bin-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const selectedCheckboxes = document.querySelectorAll('.bin-checkbox:checked');
+    const count = selectedCheckboxes.length;
+    
+    document.getElementById('selectedCount').textContent = count;
+    document.getElementById('bulkTaskBtn').disabled = count === 0;
+    document.getElementById('bulkExportBtn').disabled = count === 0;
+    
+    // Update select all checkbox
+    const selectAll = document.getElementById('selectAll');
+    const totalCheckboxes = document.querySelectorAll('.bin-checkbox').length;
+    selectAll.checked = count === totalCheckboxes;
+    selectAll.indeterminate = count > 0 && count < totalCheckboxes;
+}
+
+function createBulkTask() {
+    const selectedCheckboxes = document.querySelectorAll('.bin-checkbox:checked');
+    const binIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+    
+    if (binIds.length === 0) {
+        alert('يرجى اختيار حاوية واحدة على الأقل');
+        return;
+    }
+    
+    window.location.href = `{{ url_for('main.create_task') }}?bins=${binIds.join(',')}`;
+}
+
+function exportSelectedBins() {
+    const selectedCheckboxes = document.querySelectorAll('.bin-checkbox:checked');
+    const binIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+    
+    console.log('Exporting selected bins:', binIds);
+    alert('سيتم تصدير الحاويات المحددة');
+}
+
+function exportBinsData() {
+    console.log('Exporting all bins data to CSV');
+    alert('سيتم تصدير جميع بيانات الحاويات');
+}
+
+function exportBinsPDF() {
+    console.log('Exporting bins data to PDF');
+    alert('سيتم تصدير بيانات الحاويات إلى PDF');
+}
+
+function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('fillLevelMin').value = '';
+    document.getElementById('fillLevelMax').value = '';
+    document.getElementById('locationFilter').value = '';
+    
+    // Reset table display
+    document.querySelectorAll('#binsTable tbody tr').forEach(row => {
+        row.style.display = '';
+    });
+}
+
+// Search and filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const fillLevelMin = document.getElementById('fillLevelMin');
+    const fillLevelMax = document.getElementById('fillLevelMax');
+    const locationFilter = document.getElementById('locationFilter');
+    
+    function filterTable() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const statusValue = statusFilter.value;
+        const minFill = parseInt(fillLevelMin.value) || 0;
+        const maxFill = parseInt(fillLevelMax.value) || 100;
+        const locationValue = locationFilter.value.toLowerCase();
+        
+        document.querySelectorAll('#binsTable tbody tr').forEach(row => {
+            const binId = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            const location = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+            const fillLevel = parseInt(row.dataset.fillLevel);
+            const status = row.querySelector('.status-badge').textContent.toLowerCase();
+            
+            const matchesSearch = binId.includes(searchTerm) || location.includes(searchTerm);
+            const matchesStatus = !statusValue || status.includes(statusValue);
+            const matchesFillLevel = fillLevel >= minFill && fillLevel <= maxFill;
+            const matchesLocation = !locationValue || location.includes(locationValue);
+            
+            row.style.display = (matchesSearch && matchesStatus && matchesFillLevel && matchesLocation) ? '' : 'none';
+        });
+    }
+    
+    searchInput.addEventListener('input', filterTable);
+    statusFilter.addEventListener('change', filterTable);
+    fillLevelMin.addEventListener('input', filterTable);
+    fillLevelMax.addEventListener('input', filterTable);
+    locationFilter.addEventListener('change', filterTable);
+    
+    // Update selected count when checkboxes change
+    document.querySelectorAll('.bin-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedCount);
+    });
+});
+</script>
+{% endblock %}

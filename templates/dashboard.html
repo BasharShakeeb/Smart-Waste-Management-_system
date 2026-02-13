@@ -1,0 +1,419 @@
+{% extends "base.html" %}
+
+{% block title %}لوحة التحكم - Collect Me IoT{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<header class="main-header">
+    <div class="header-content">
+        <div class="logo-section">
+            <i class="fas fa-recycle"></i>
+            <h1>Collect Me IoT</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline-light btn-sm" onclick="toggleLanguage()">
+                <i class="fas fa-globe"></i> العربية
+            </button>
+            <div class="user-info">
+                <div class="user-avatar">{{ session.name[0] if session.name else 'A' }}</div>
+                <span>{{ session.name if session.name else 'المدير' }}</span>
+                <a href="{{ url_for('main.logout') }}" class="btn btn-outline-light btn-sm ms-2">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Sidebar -->
+<nav class="main-sidebar">
+    <div class="sidebar-nav">
+        <div class="nav-item">
+            <a href="{{ url_for('main.dashboard') }}" class="nav-link active">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>لوحة التحكم</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.bins_management') }}" class="nav-link">
+                <i class="fas fa-trash-alt"></i>
+                <span>الحاويات</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.live_map') }}" class="nav-link">
+                <i class="fas fa-map-marked-alt"></i>
+                <span>الخريطة الحية</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.drivers_management') }}" class="nav-link">
+                <i class="fas fa-users"></i>
+                <span>السائقون</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.create_task') }}" class="nav-link">
+                <i class="fas fa-tasks"></i>
+                <span>إنشاء مهمة</span>
+            </a>
+        </div>
+        <!-- Reports navigation removed -->
+        <div class="nav-item">
+            <a href="#" class="nav-link">
+                <i class="fas fa-cog"></i>
+                <span>الإعدادات</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main-content">
+    <div class="container-fluid">
+        <!-- Page Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-1">نظرة عامة</h2>
+                        <p class="text-muted mb-0">مراقبة نظام إدارة النفايات الذكي</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="refreshDashboard()">
+                            <i class="fas fa-sync-alt"></i> تحديث
+                        </button>
+                        <span class="badge bg-success ms-2" id="connection-status">
+                            <i class="fas fa-wifi"></i> متصل
+                        </span>
+                        <small class="text-muted ms-2" id="last-update">
+                            آخر تحديث: --:--:--
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon primary">
+                        <i class="fas fa-trash-alt"></i>
+                    </div>
+                    <div class="stats-number" id="total-bins">{{ total_bins }}</div>
+                    <div class="stats-label">إجمالي الحاويات</div>
+                    <div class="stats-change positive">
+                        <i class="fas fa-arrow-up"></i> +3% هذا الأسبوع
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stats-number" id="full-bins">{{ full_bins }}</div>
+                    <div class="stats-label">حاويات ممتلئة</div>
+                    <div class="stats-change negative">
+                        <i class="fas fa-exclamation-circle"></i> تحتاج انتباه
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon success">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="stats-number" id="active-bins">{{ active_bins }}</div>
+                    <div class="stats-label">حاويات نشطة</div>
+                    <div class="stats-change positive">
+                        <i class="fas fa-check-circle"></i> جميعها متصلة
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon primary">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stats-number" id="active-drivers">{{ active_drivers }}</div>
+                    <div class="stats-label">سائقون نشطون</div>
+                    <div class="stats-change positive">
+                        <i class="fas fa-check-circle"></i> جميعهم متصلون
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Content -->
+        <div class="row">
+            <!-- Bins Table -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-trash-alt"></i> إدارة الحاويات
+                            </h5>
+                            <div>
+                                <button class="btn btn-light btn-sm" onclick="exportBins()">
+                                    <i class="fas fa-download"></i> تصدير
+                                </button>
+                                <button class="btn btn-success btn-sm" onclick="createTaskFromFullBins()">
+                                    <i class="fas fa-plus"></i> إنشاء مهمة
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-container">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>معرف الحاوية</th>
+                                        <th>الموقع</th>
+                                        <th>مستوى الامتلاء</th>
+                                        <th>الحالة</th>
+                                        <th>آخر جمع</th>
+                                        <th>السائق</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bins-table-body">
+                                    {% for bin in bins %}
+                                    <tr data-bin-id="{{ bin.bin_id }}">
+                                        <td>
+                                            <strong>{{ bin.bin_id }}</strong>
+                                        </td>
+                                        <td>{{ bin.location }}</td>
+                                        <td>
+                                            <div class="fill-level">
+                                                <span class="me-2 fill-level-text">{{ bin.fill_level }}%</span>
+                                                <div class="fill-bar">
+                                                    <div class="fill-progress progress-bar {{ 'high' if bin.fill_level >= 80 else 'medium' if bin.fill_level >= 40 else 'low' }}" 
+                                                         style="width: {{ bin.fill_level }}%"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge {{ 'full' if bin.fill_level >= 80 else 'half' if bin.fill_level >= 40 else 'empty' }}">
+                                                {{ 'ممتلئ' if bin.fill_level >= 80 else 'نصف ممتلئ' if bin.fill_level >= 40 else 'فارغ' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if bin.last_collected %}
+                                                {{ bin.last_collected.strftime('%Y-%m-%d %H:%M') }}
+                                            {% else %}
+                                                <span class="text-muted">لم يتم الجمع</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="text-muted">غير مخصص</span>
+                                        </td>
+                                        <td>
+                                            {% if bin.fill_level >= 80 %}
+                                                <button class="btn btn-warning btn-sm" onclick="assignDriver('{{ bin.id }}')">
+                                                    <i class="fas fa-user"></i> تعيين سائق
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-outline-secondary btn-sm" disabled>
+                                                    <i class="fas fa-check"></i> لا يحتاج جمع
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drivers and Quick Actions -->
+            <div class="col-lg-4">
+                <!-- Drivers Status -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users"></i> حالة السائقين
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% for driver in drivers %}
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="user-avatar me-3" style="width: 40px; height: 40px;">
+                                {{ driver.user.name[0] if driver.user.name else 'S' }}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="fw-bold">{{ driver.user.name }}</div>
+                                <small class="text-muted">{{ driver.license_number }}</small>
+                            </div>
+                            <div>
+                                <span class="status-badge {{ driver.status }}">
+                                    {{ 'متصل' if driver.status == 'online' else 'غير متصل' if driver.status == 'offline' else 'مشغول' }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-bolt"></i> إجراءات سريعة
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" onclick="window.location.href='{{ url_for('main.create_task') }}'">
+                                <i class="fas fa-plus"></i> إنشاء مهمة جديدة
+                            </button>
+                            <button class="btn btn-info" onclick="window.location.href='{{ url_for('main.live_map') }}'">
+                                <i class="fas fa-map"></i> عرض الخريطة الحية
+                            </button>
+                            <button class="btn btn-warning" onclick="window.location.href='{{ url_for('main.bins_management') }}'">
+                                <i class="fas fa-trash-alt"></i> إدارة الحاويات
+                            </button>
+                            <!-- Reports button removed -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="row mt-4">
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-line"></i> اتجاه الجمع
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="collectionTrendChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-bar"></i> كفاءة المسارات
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="routeEfficiencyChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Assign Driver Modal -->
+<div class="modal fade" id="assignDriverModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تعيين سائق للحاوية</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="assignDriverForm">
+                    <input type="hidden" id="selectedBinId" name="bin_id">
+                    <div class="mb-3">
+                        <label for="driverSelect" class="form-label">اختر السائق</label>
+                        <select class="form-select" id="driverSelect" name="driver_id" required>
+                            <option value="">اختر سائق...</option>
+                            {% for driver in drivers %}
+                            <option value="{{ driver.id }}">{{ driver.user.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="prioritySelect" class="form-label">الأولوية</label>
+                        <select class="form-select" id="prioritySelect" name="priority">
+                            <option value="normal">عادية</option>
+                            <option value="high">عالية</option>
+                            <option value="urgent">عاجلة</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="submitDriverAssignment()">تعيين</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Dashboard specific functions
+function refreshDashboard() {
+    location.reload();
+}
+
+function createTaskFromFullBins() {
+    const fullBins = [];
+    document.querySelectorAll('tbody tr').forEach(row => {
+        const fillLevel = row.querySelector('.fill-progress');
+        if (fillLevel && fillLevel.style.width && parseInt(fillLevel.style.width) >= 80) {
+            const binId = row.querySelector('td:first-child strong').textContent;
+            fullBins.push(binId);
+        }
+    });
+    
+    if (fullBins.length === 0) {
+        alert('لا توجد حاويات ممتلئة لإنشاء مهمة');
+        return;
+    }
+    
+    window.location.href = `{{ url_for('main.create_task') }}?bins=${fullBins.join(',')}`;
+}
+
+function assignDriver(binId) {
+    document.getElementById('selectedBinId').value = binId;
+    const modal = new bootstrap.Modal(document.getElementById('assignDriverModal'));
+    modal.show();
+}
+
+function submitDriverAssignment() {
+    const form = document.getElementById('assignDriverForm');
+    const formData = new FormData(form);
+    
+    // Here you would send the data to the server
+    console.log('Assigning driver:', Object.fromEntries(formData));
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('assignDriverModal'));
+    modal.hide();
+    
+    // Show success message
+    alert('تم تعيين السائق بنجاح');
+}
+
+function exportBins() {
+    // Export bins data
+    console.log('Exporting bins data...');
+    alert('سيتم تصدير بيانات الحاويات');
+}
+
+// Initialize dashboard when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize charts
+    initializeCharts();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(refreshDashboard, 30000);
+});
+</script>
+{% endblock %}

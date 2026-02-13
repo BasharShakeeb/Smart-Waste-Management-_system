@@ -1,0 +1,1263 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+{% endblock %}
+
+{% block title %}واجهة السائق - Collect Me IoT{% endblock %}
+
+{% block content %}
+<!-- Mobile-First Driver Interface -->
+<div class="driver-interface">
+    <!-- Header -->
+    <header class="driver-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-6">
+                    <div class="driver-info">
+                        <div class="driver-avatar">
+                            {{ session.name[0] if session.name else 'S' }}
+                        </div>
+                        <div class="driver-details">
+                            <h6 class="mb-0">{{ session.name if session.name else 'السائق' }}</h6>
+                            <small class="text-muted">سائق نشط</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 text-end">
+                    <div class="driver-status">
+                        <span class="status-indicator online"></span>
+                        <span class="status-text">متصل</span>
+                    </div>
+                    <button class="btn btn-outline-light btn-sm" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="driver-nav">
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('tasks')">
+                <i class="fas fa-tasks"></i>
+                <span>المهام</span>
+            </button>
+            <button class="nav-tab" onclick="showTab('map')">
+                <i class="fas fa-map"></i>
+                <span>الخريطة</span>
+            </button>
+            <button class="nav-tab" onclick="showTab('history')">
+                <i class="fas fa-history"></i>
+                <span>السجل</span>
+            </button>
+            <button class="nav-tab" onclick="showTab('profile')">
+                <i class="fas fa-user"></i>
+                <span>الملف</span>
+            </button>
+        </div>
+    </nav>
+<main class="driver-content">
+    <!-- Tasks Tab -->
+    <div id="tasksTab" class="tab-content active">
+        <!-- Current Task -->
+        <div class="current-task-section">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-play-circle"></i> المهمة الحالية
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if tasks %}
+                        {% for task in tasks %}
+                        <div class="current-task">
+                            <div class="task-info">
+                                <h5>{{ task.task_id }} - {{ task.title or '' }}</h5>
+                                <p class="text-muted">{{ task.description or 'مهمة جمع نفايات' }}</p>
+                                <div class="task-stats">
+                                    <div class="stat-item">
+                                        <!-- استخدام total_bins لأن القاموس يحتوي عليه -->
+                                        <span class="stat-number">{{ task.total_bins or 0 }}</span>
+                                        <span class="stat-label">حاوية</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-number">{{ task.priority or 'normal' }}</span>
+                                        <span class="stat-label">أولوية</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <!-- scheduled_time هنا سلسلة ISO مثل "2025-10-07T09:04:00" -->
+                                        <span class="stat-number">
+                                            {% if task.scheduled_time %}
+                                                {{ task.scheduled_time[11:16] }}
+                                            {% else %}
+                                                غير محدد
+                                            {% endif %}
+                                        </span>
+                                        <span class="stat-label">وقت</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="task-actions">
+                                {% if task.status == 'pending' or task.status == 'assigned' %}
+                                <button class="btn btn-success btn-lg" onclick="startTask('{{ task.id }}')">
+                                    <i class="fas fa-play"></i> بدء المهمة
+                                </button>
+                                {% elif task.status == 'in_progress' %}
+                                <button class="btn btn-warning btn-lg" onclick="pauseTask('{{ task.id }}')">
+                                    <i class="fas fa-pause"></i> إيقاف مؤقت
+                                </button>
+                                <button class="btn btn-primary btn-lg ms-2" onclick="completeTask('{{ task.id }}')">
+                                    <i class="fas fa-check"></i> إنهاء المهمة
+                                </button>
+                                {% elif task.status == 'completed' %}
+                                <button class="btn btn-outline-success btn-lg" disabled>
+                                    <i class="fas fa-check-circle"></i> مكتمل
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <hr>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-tasks">
+                            <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                            <h6>لا توجد مهام حالية</h6>
+                            <p class="text-muted">ستظهر المهام الجديدة هنا عند تعيينها لك</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- NOTE: Your provided task objects don't include task_bins.
+             If you later pass task.task_bins (قائمة الحاويات) inside كل مهمة,
+             you can re-enable a bins section similar to the original template. -->
+    </div>
+</main>
+
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <div class="row">
+                    <div class="col-6">
+                        <button class="btn btn-outline-primary w-100" onclick="refreshTasks()">
+                            <i class="fas fa-sync-alt"></i> تحديث
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button class="btn btn-outline-info w-100" onclick="reportIssue()">
+                            <i class="fas fa-exclamation-triangle"></i> بلاغ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Tab -->
+        <div id="mapTab" class="tab-content">
+            <div class="map-container">
+                <div class="map-header">
+                    <h6>خريطة المهام</h6>
+                    <div class="map-controls">
+                        <button class="btn btn-outline-primary btn-sm" onclick="centerMap()">
+                            <i class="fas fa-crosshairs"></i>
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="toggleMapLayers()">
+                            <i class="fas fa-layer-group"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="driverMap" class="map-view">
+                    <!-- Map will be initialized here -->
+                </div>
+                <div class="map-legend">
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #e74c3c;"></span>
+                        <span>حاويات ممتلئة</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #f39c12;"></span>
+                        <span>حاويات نصف ممتلئة</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #27ae60;"></span>
+                        <span>حاويات فارغة</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="historyTab" class="tab-content">
+            <div class="history-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-history"></i> سجل المهام
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="history-filters">
+                            <div class="row">
+                                <div class="col-6">
+                                    <select class="form-select form-select-sm" id="historyFilter">
+                                        <option value="all">جميع المهام</option>
+                                        <option value="today">اليوم</option>
+                                        <option value="week">هذا الأسبوع</option>
+                                        <option value="month">هذا الشهر</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <select class="form-select form-select-sm" id="statusFilter">
+                                        <option value="all">جميع الحالات</option>
+                                        <option value="completed">مكتملة</option>
+                                        <option value="cancelled">ملغية</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="history-list">
+                            {% if completed_tasks %}
+                                {% for task in completed_tasks %}
+                                <div class="history-item">
+                                    <div class="history-info">
+                                        <h6>{{ task.task_id }}</h6>
+                                        <p class="text-muted">{{ task.task_bins|length if task.task_bins else 0 }} حاوية - {{ task.route_name or task.title or 'مهمة جمع' }}</p>
+                                        <small class="text-success">
+                                            <i class="fas fa-check-circle"></i> مكتملة
+                                        </small>
+                                    </div>
+                                    <div class="history-details">
+                                        <div class="history-time">{{ task.completed_time.strftime('%Y-%m-%d') if task.completed_time else task.scheduled_time.strftime('%Y-%m-%d') if task.scheduled_time else 'غير محدد' }}</div>
+                                        <div class="history-duration">{{ ((task.task_bins|length) * 0.25)|round(1) if task.task_bins else 0.5 }} ساعة</div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-4">
+                                    <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                                    <h6>لا يوجد سجل مهام</h6>
+                                    <p class="text-muted">سيظهر سجل المهام المكتملة هنا</p>
+                                </div>
+                            {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Tab -->
+        <div id="profileTab" class="tab-content">
+            <div class="profile-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-user"></i> الملف الشخصي
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="profile-info">
+                            <div class="profile-avatar">
+                                {{ session.name[0] if session.name else 'S' }}
+                            </div>
+                            <div class="profile-details">
+                                <h5>{{ session.name if session.name else 'السائق' }}</h5>
+                                <p class="text-muted">{{ session.username if session.username else 'sarah@collectme.com' }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="profile-stats">
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-tasks"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">{{ task_stats.completed if task_stats else 0 }}</div>
+                                    <div class="stat-label">مهمة مكتملة</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">{{ task_stats.total_hours if task_stats else 0 }}</div>
+                                    <div class="stat-label">ساعة عمل</div>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon">
+                                    <i class="fas fa-star"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <div class="stat-number">{{ (task_stats.rating / 10)|round(1) if task_stats and task_stats.rating > 0 else '0.0' }}</div>
+                                    <div class="stat-label">تقييم</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="profile-actions">
+                            <button class="btn btn-outline-primary w-100 mb-2" onclick="editProfile()">
+                                <i class="fas fa-edit"></i> تعديل الملف
+                            </button>
+                            <button class="btn btn-outline-secondary w-100 mb-2" onclick="changePassword()">
+                                <i class="fas fa-key"></i> تغيير كلمة المرور
+                            </button>
+                            <button class="btn btn-outline-info w-100" onclick="contactSupport()">
+                                <i class="fas fa-headset"></i> الدعم الفني
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Action Bar -->
+    <div class="bottom-action-bar">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-4">
+                    <button class="action-btn" onclick="emergencyCall()">
+                        <i class="fas fa-phone"></i>
+                        <span>طوارئ</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button class="action-btn" onclick="reportLocation()">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>موقعي</span>
+                    </button>
+                </div>
+                <div class="col-4">
+                    <button class="action-btn" onclick="quickMessage()">
+                        <i class="fas fa-comment"></i>
+                        <span>رسالة</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Mobile-First Driver Interface Styles */
+.driver-interface {
+    min-height: 100vh;
+    background: #f8f9fa;
+    padding-bottom: 80px; /* Space for bottom action bar */
+}
+
+.driver-header {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.driver-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.driver-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.driver-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.online {
+    background: #27ae60;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.driver-nav {
+    background: white;
+    border-bottom: 1px solid #e9ecef;
+    position: sticky;
+    top: 80px;
+    z-index: 999;
+}
+
+.nav-tabs {
+    display: flex;
+    justify-content: space-around;
+    padding: 0.5rem 0;
+}
+
+.nav-tab {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    color: #6c757d;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+}
+
+.nav-tab.active {
+    color: #3498db;
+    background: rgba(52, 152, 219, 0.1);
+}
+
+.nav-tab i {
+    font-size: 1.2rem;
+}
+
+.nav-tab span {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.driver-content {
+    padding: 1rem;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Current Task Styles */
+.current-task {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+}
+
+.task-stats {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    display: block;
+    font-weight: bold;
+    color: #3498db;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.no-tasks {
+    text-align: center;
+    padding: 2rem;
+}
+
+/* Bin Items */
+.bin-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.bin-item:last-child {
+    border-bottom: none;
+}
+
+.bin-item:hover {
+    background: rgba(52, 152, 219, 0.05);
+}
+
+.bin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.bin-id {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.bin-status {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.bin-status.pending {
+    background: rgba(243, 156, 18, 0.1);
+    color: #f39c12;
+}
+
+.bin-status.collected {
+    background: rgba(39, 174, 96, 0.1);
+    color: #27ae60;
+}
+
+.bin-location {
+    margin: 0 0 0.5rem 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.bin-details {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.bin-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Map Styles */
+.map-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.map-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.map-view {
+    height: 400px;
+    width: 100%;
+    background: #f8f9fa;
+}
+
+#driverMap {
+    height: 100%;
+    width: 100%;
+    border-radius: 0 0 12px 12px;
+}
+
+.user-location-marker {
+    background: transparent;
+    border: none;
+    text-align: center;
+}
+
+.map-placeholder {
+    text-align: center;
+    color: #6c757d;
+}
+
+.map-legend {
+    display: flex;
+    justify-content: space-around;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+/* History Styles */
+.history-filters {
+    margin-bottom: 1rem;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.history-item:last-child {
+    border-bottom: none;
+}
+
+.history-details {
+    text-align: right;
+}
+
+.history-time {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.history-duration {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* Profile Styles */
+.profile-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.profile-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+.profile-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.stat-icon {
+    color: #3498db;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* Quick Actions */
+.quick-actions {
+    margin-top: 1rem;
+}
+
+/* Bottom Action Bar */
+.bottom-action-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid #e9ecef;
+    padding: 0.5rem 0;
+    z-index: 1000;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    color: #6c757d;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    width: 100%;
+}
+
+.action-btn:hover {
+    color: #3498db;
+    background: rgba(52, 152, 219, 0.1);
+}
+
+.action-btn i {
+    font-size: 1.2rem;
+}
+
+.action-btn span {
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+    .driver-interface {
+        max-width: 400px;
+        margin: 0 auto;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .driver-content {
+        padding: 1.5rem;
+    }
+    
+    .profile-stats {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Button Styles */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Driver interface functions
+let currentTab = 'tasks';
+
+function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all nav tabs
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Show selected tab
+    document.getElementById(tabName + 'Tab').classList.add('active');
+    
+    // Add active class to selected nav tab
+    event.target.closest('.nav-tab').classList.add('active');
+    
+    currentTab = tabName;
+    
+    // Initialize map if map tab is selected
+    if (tabName === 'map') {
+        setTimeout(initializeMap, 100); // Small delay to ensure tab is visible
+    }
+}
+
+function startTask(taskId) {
+    if (confirm('هل أنت متأكد من بدء هذه المهمة؟')) {
+        // Show loading state
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري البدء...';
+        btn.disabled = true;
+        
+        // Call API to start task
+        fetch(`/api/tasks/${taskId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                status: 'in_progress',
+                started_time: new Date().toISOString()
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.task) {
+                alert('تم بدء المهمة بنجاح!');
+                location.reload();
+            } else {
+                alert('حدث خطأ في بدء المهمة: ' + (data.error || 'خطأ غير معروف'));
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ في الاتصال بالخادم');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    }
+}
+
+function completeTask(taskId) {
+    if (confirm('هل أنت متأكد من إنهاء هذه المهمة؟')) {
+        // Show loading state
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإنهاء...';
+        btn.disabled = true;
+        
+        // Call API to complete task
+        fetch(`/api/tasks/${taskId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                status: 'completed',
+                completed_time: new Date().toISOString()
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.task) {
+                alert('تم إنهاء المهمة بنجاح!');
+                location.reload();
+            } else {
+                alert('حدث خطأ في إنهاء المهمة: ' + (data.error || 'خطأ غير معروف'));
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ في الاتصال بالخادم');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    }
+}
+
+function pauseTask(taskId) {
+    if (confirm('هل تريد إيقاف المهمة مؤقتاً؟')) {
+        console.log('Pausing task:', taskId);
+        alert('تم إيقاف المهمة مؤقتاً');
+    }
+}
+
+function navigateToBin(latitude, longitude, binId) {
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+    
+    if (confirm(`هل تريد فتح الملاحة للوصول إلى الحاوية ${binId}؟`)) {
+        // Try to open Google Maps with directions
+        const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+        
+        // Check if on mobile device
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+            // Try to open in Google Maps app first
+            const mapsAppUrl = `comgooglemaps://?daddr=${lat},${lng}&directionsmode=driving`;
+            window.location.href = mapsAppUrl;
+            
+            // Fallback to web version after a short delay
+            setTimeout(() => {
+                window.open(googleMapsUrl, '_blank');
+            }, 2000);
+        } else {
+            // Open in new tab for desktop
+            window.open(googleMapsUrl, '_blank');
+        }
+        
+        console.log(`Navigating to bin ${binId} at coordinates: ${lat}, ${lng}`);
+    }
+}
+
+function markBinCollected(taskId, binId) {
+    if (confirm('هل وصلت إلى هذه الحاوية؟')) {
+        // Show loading state
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري...';
+        btn.disabled = true;
+        
+        // Call API to mark bin as collected
+        fetch(`/api/tasks/${taskId}/bins/${binId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                status: 'collected',
+                collected_time: new Date().toISOString(),
+                fill_level_after: 0
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.task_bin) {
+                alert('تم تسجيل وصولك للحاوية!');
+                
+                // Update UI
+                const binItem = document.querySelector(`[data-bin-id="${binId}"]`);
+                if (binItem) {
+                    const statusElement = binItem.querySelector('.bin-status');
+                    statusElement.innerHTML = '<i class="fas fa-check"></i> تم الجمع';
+                    statusElement.className = 'bin-status collected';
+                    
+                    const actionsElement = binItem.querySelector('.bin-actions');
+                    actionsElement.innerHTML = '<button class="btn btn-outline-success btn-sm" disabled><i class="fas fa-check-circle"></i> مكتمل</button>';
+                }
+            } else {
+                alert('حدث خطأ في تسجيل جمع الحاوية: ' + (data.error || 'خطأ غير معروف'));
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('حدث خطأ في الاتصال بالخادم');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    }
+}
+
+function refreshTasks() {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري...';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        location.reload();
+    }, 2000);
+}
+
+function reportIssue() {
+    const issue = prompt('اكتب وصف المشكلة:');
+    if (issue) {
+        console.log('Reporting issue:', issue);
+        alert('تم إرسال البلاغ بنجاح');
+    }
+}
+
+function centerMap() {
+    if (typeof map !== 'undefined' && map) {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
+                map.setView([userLat, userLng], 15);
+                
+                // Add user location marker if it doesn't exist
+                if (typeof userMarker !== 'undefined' && userMarker) {
+                    map.removeLayer(userMarker);
+                }
+                userMarker = L.marker([userLat, userLng], {
+                    icon: L.divIcon({
+                        className: 'user-location-marker',
+                        html: '<i class="fas fa-user-circle"></i>',
+                        iconSize: [30, 30]
+                    })
+                }).addTo(map).bindPopup('موقعك الحالي');
+                
+                alert('تم تحديد موقعك على الخريطة');
+            }, function(error) {
+                console.error('Geolocation error:', error);
+                alert('لم يتمكن من تحديد موقعك');
+            });
+        } else {
+            alert('المتصفح لا يدعم تحديد الموقع');
+        }
+    } else {
+        alert('الخريطة غير متاحة');
+    }
+}
+
+function toggleMapLayers() {
+    console.log('Toggling map layers');
+    alert('سيتم تبديل طبقات الخريطة');
+}
+
+function editProfile() {
+    console.log('Opening profile edit');
+    alert('سيتم فتح نموذج تعديل الملف الشخصي');
+}
+
+function changePassword() {
+    const newPassword = prompt('أدخل كلمة المرور الجديدة:');
+    if (newPassword) {
+        console.log('Changing password');
+        alert('تم تغيير كلمة المرور بنجاح');
+    }
+}
+
+function contactSupport() {
+    console.log('Contacting support');
+    alert('سيتم فتح قناة الدعم الفني');
+}
+
+function emergencyCall() {
+    if (confirm('هل تريد الاتصال بالطوارئ؟')) {
+        console.log('Making emergency call');
+        alert('سيتم الاتصال بالطوارئ');
+    }
+}
+
+function reportLocation() {
+    console.log('Reporting current location');
+    alert('تم إرسال موقعك الحالي');
+}
+
+function quickMessage() {
+    const message = prompt('اكتب رسالتك السريعة:');
+    if (message) {
+        console.log('Sending quick message:', message);
+        alert('تم إرسال الرسالة');
+    }
+}
+
+function logout() {
+    if (confirm('هل تريد تسجيل الخروج؟')) {
+        window.location.href = '{{ url_for("main.logout") }}'; // Replace with your actual logout URL
+    }
+}
+
+// Auto-refresh tasks every 30 seconds
+setInterval(() => {
+    if (currentTab === 'tasks') {
+        // Only refresh if on tasks tab
+        console.log('Auto-refreshing tasks...');
+    }
+}, 30000);
+
+// Handle back button
+window.addEventListener('popstate', function(event) {
+    // Handle browser back button
+    console.log('Back button pressed');
+});
+
+// Initialize driver interface
+let map;
+let userMarker;
+let binMarkers = [];
+let userLocation = null;
+
+// Calculate distance between two coordinates
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c; // Distance in kilometers
+    return distance;
+}
+
+// Update distance displays
+function updateDistances() {
+    if (!userLocation) return;
+    
+    document.querySelectorAll('.distance').forEach(element => {
+        const lat = parseFloat(element.dataset.lat);
+        const lng = parseFloat(element.dataset.lng);
+        
+        if (lat && lng) {
+            const distance = calculateDistance(userLocation.lat, userLocation.lng, lat, lng);
+            const distanceText = distance < 1 ? 
+                `${Math.round(distance * 1000)} م` : 
+                `${distance.toFixed(1)} كم`;
+            element.querySelector('.distance-text').textContent = distanceText;
+        }
+    });
+}
+
+// Initialize map
+function initializeMap() {
+    if (currentTab === 'map' && !map) {
+        // Initialize Leaflet map
+        map = L.map('driverMap').setView([24.6262, 46.5631], 12); // Default to Riyadh
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Get bin data from the page and add to map
+        const binElements = document.querySelectorAll('[data-lat]');
+        binElements.forEach(element => {
+            const lat = parseFloat(element.dataset.lat);
+            const lng = parseFloat(element.dataset.lng);
+            const binItem = element.closest('.bin-item');
+            
+            if (lat && lng && binItem) {
+                const binId = binItem.querySelector('.bin-id').textContent;
+                const fillLevelText = binItem.querySelector('.fill-level').textContent;
+                const fillLevel = parseInt(fillLevelText.match(/\d+/)[0]);
+                const location = binItem.querySelector('.bin-location').textContent.split('\n')[0].trim();
+                const statusElement = binItem.querySelector('.bin-status');
+                const status = statusElement.textContent.includes('تم الجمع') ? 'collected' : 'pending';
+                
+                // Choose marker color based on fill level and status
+                let markerColor = '#27ae60'; // Green for low fill
+                if (fillLevel >= 80) markerColor = '#e74c3c'; // Red for high fill
+                else if (fillLevel >= 50) markerColor = '#f39c12'; // Orange for medium fill
+                
+                if (status === 'collected') markerColor = '#95a5a6'; // Gray for collected
+                
+                const binMarker = L.circleMarker([lat, lng], {
+                    color: markerColor,
+                    fillColor: markerColor,
+                    fillOpacity: 0.8,
+                    radius: 10
+                }).addTo(map);
+                
+                binMarker.bindPopup(`
+                    <div style="text-align: center; font-family: 'Cairo', sans-serif;">
+                        <h6>${binId}</h6>
+                        <p><i class="fas fa-map-marker-alt"></i> ${location}</p>
+                        <p><i class="fas fa-chart-pie"></i> ${fillLevel}% ممتلئ</p>
+                        <p><i class="fas fa-info-circle"></i> ${status === 'pending' ? 'في الانتظار' : 'تم الجمع'}</p>
+                        <button onclick="navigateToBin(${lat}, ${lng}, '${binId}')" class="btn btn-primary btn-sm">
+                            <i class="fas fa-directions"></i> تنقل
+                        </button>
+                    </div>
+                `);
+                
+                binMarkers.push(binMarker);
+            }
+        });
+        
+        // Try to get user location and center map
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                userLocation = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                
+                map.setView([userLocation.lat, userLocation.lng], 15);
+                
+                userMarker = L.marker([userLocation.lat, userLocation.lng], {
+                    icon: L.divIcon({
+                        className: 'user-location-marker',
+                        html: '<i class="fas fa-user-circle" style="color: #3498db; font-size: 20px;"></i>',
+                        iconSize: [30, 30]
+                    })
+                }).addTo(map).bindPopup('موقعك الحالي');
+                
+                // Update distances
+                updateDistances();
+            });
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Driver interface initialized');
+    
+    // Check for notifications
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+    
+    // Initialize geolocation for distance calculation
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            userLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+            console.log('Current position:', position.coords);
+            updateDistances();
+        }, function(error) {
+            console.error('Geolocation error:', error);
+        });
+        
+        // Update location every 30 seconds
+        setInterval(() => {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                userLocation = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                updateDistances();
+                
+                // Update user marker on map if it exists
+                if (userMarker && map) {
+                    userMarker.setLatLng([userLocation.lat, userLocation.lng]);
+                }
+            });
+        }, 30000);
+    }
+});
+</script>
+{% endblock %}

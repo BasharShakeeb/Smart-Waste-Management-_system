@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block title %}Long - Collect Me IoT{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="container-fluid">
+        <div class="row min-vh-100">
+            <!-- Left Side - Branding -->
+            <div class="col-lg-6 d-none d-lg-flex login-left">
+                <div class="login-branding">
+                    <div class="brand-logo">
+                        <i class="fas fa-recycle"></i>
+                        <h1>Collect Me IoT</h1>
+                    </div>
+                    <h2>نظام إدارة النفايات الذكي</h2>
+                    <p>إدارة ذكية وفعالة لجمع النفايات باستخدام تقنيات إنترنت الأشياء</p>
+                    <div class="features">
+                        <div class="feature-item">
+                            <i class="fas fa-map-marked-alt"></i>
+                            <span>تتبع الحاويات في الوقت الفعلي</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-route"></i>
+                            <span>تخطيط المسارات المثلى</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-mobile-alt"></i>
+                            <span>واجهة سائق متطورة</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Side - Login Form -->
+            <div class="col-lg-6 login-right">
+                <div class="login-form-container">
+                    <!-- Language Toggle -->
+                    <div class="language-toggle">
+                        <button class="btn btn-outline-primary btn-sm" onclick="toggleLanguage()">
+                            <i class="fas fa-globe"></i> العربية
+                        </button>
+                    </div>
+                    
+                    <!-- Login Form -->
+                    <div class="login-form">
+                        <div class="form-header">
+                            <div class="logo-small">
+                                <i class="fas fa-recycle"></i>
+                            </div>
+                            <h3>مدير الحاويات الذكية</h3>
+                            <p>الوصول إلى لوحة إدارة جمع النفايات</p>
+                        </div>
+                        
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+                        
+                        <form method="POST" action="{{ url_for('main.login') }}">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope"></i> البريد الإلكتروني
+                                </label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-lock"></i> كلمة المرور
+                                </label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label">نوع المستخدم</label>
+                                <div class="role-selection">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="role" id="admin" value="admin" checked>
+                                        <label class="form-check-label" for="admin">
+                                            <i class="fas fa-user-shield"></i> مشرف
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="role" id="manager" value="manager">
+                                        <label class="form-check-label" for="manager">
+                                            <i class="fas fa-user-tie"></i> مدير
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="role" id="driver" value="driver">
+                                        <label class="form-check-label" for="driver">
+                                            <i class="fas fa-truck"></i> سائق
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
+                            </button>
+                        </form>
+                        
+                        <div class="form-footer">
+                            <a href="#" class="forgot-password">
+                                <i class="fas fa-question-circle"></i> نسيت كلمة المرور؟
+                            </a>
+                        </div>
+                        
+                        <!-- Demo Credentials -->
+                        <div class="demo-credentials">
+                            <h6>بيانات تجريبية:</h6>
+                            <div class="demo-item">
+                                <strong>مشرف:</strong> admin@collectme.com (مرور: admin123)
+                            </div>
+                            <div class="demo-item">
+                                <strong>مدير:</strong> manager@collectme.com (مرور: manager123)
+                            </div>
+                            <div class="demo-item">
+                                <strong>سائق:</strong> ahmed@collectme.com (مرور: driver123)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.login-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.login-left {
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.login-branding {
+    text-align: center;
+    max-width: 500px;
+}
+
+.brand-logo {
+    margin-bottom: 2rem;
+}
+
+.brand-logo i {
+    font-size: 4rem;
+    color: #3498db;
+    margin-bottom: 1rem;
+}
+
+.brand-logo h1 {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.login-branding h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: #ecf0f1;
+}
+
+.login-branding p {
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    color: #bdc3c7;
+}
+
+.features {
+    text-align: right;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.feature-item i {
+    margin-left: 1rem;
+    color: #3498db;
+    width: 20px;
+}
+
+.login-right {
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.login-form-container {
+    width: 100%;
+    max-width: 400px;
+}
+
+.language-toggle {
+    text-align: left;
+    margin-bottom: 2rem;
+}
+
+.login-form {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.logo-small {
+    margin-bottom: 1rem;
+}
+
+.logo-small i {
+    font-size: 2rem;
+    color: #3498db;
+}
+
+.form-header h3 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.form-header p {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.form-label i {
+    margin-left: 0.5rem;
+    color: #3498db;
+}
+
+.form-control {
+    border: 2px solid #ecf0f1;
+    border-radius: 8px;
+    padding: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+}
+
+.role-selection {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.form-check-label {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border: 2px solid #ecf0f1;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.form-check-input:checked + .form-check-label {
+    border-color: #3498db;
+    background: #3498db;
+    color: white;
+}
+
+.form-check-label i {
+    margin-left: 0.5rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+}
+
+.form-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+.forgot-password {
+    color: #7f8c8d;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.forgot-password:hover {
+    color: #3498db;
+}
+
+.demo-credentials {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.demo-credentials h6 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.demo-item {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+
+@media (max-width: 991px) {
+    .login-left {
+        display: none;
+    }
+    
+    .login-right {
+        padding: 1rem;
+    }
+    
+    .login-form {
+        padding: 1.5rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleLanguage() {
+    // Language toggle functionality
+    console.log('Language toggle clicked');
+}
+
+// Form validation
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    
+    form.addEventListener('submit', function(e) {
+        if (!emailInput.value || !passwordInput.value) {
+            e.preventDefault();
+            alert('يرجى ملء جميع الحقول المطلوبة');
+        }
+    });
+    
+    // Auto-fill demo credentials
+    const roleRadios = document.querySelectorAll('input[name="role"]');
+    roleRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'admin') {
+                emailInput.value = 'admin@collectme.com';
+                passwordInput.value = 'admin123';
+            } else if (this.value === 'manager') {
+                emailInput.value = 'manager@collectme.com';
+                passwordInput.value = 'manager123';
+            } else if (this.value === 'driver') {
+                emailInput.value = 'ahmed@collectme.com';
+                passwordInput.value = 'driver123';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

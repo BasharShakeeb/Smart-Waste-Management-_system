@@ -1,0 +1,998 @@
+{% extends "base.html" %}
+
+{% block title %}إدارة السائقين - Collect Me IoT{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<header class="main-header">
+    <div class="header-content">
+        <div class="logo-section">
+            <i class="fas fa-recycle"></i>
+            <h1>Collect Me IoT</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline-light btn-sm" onclick="toggleLanguage()">
+                <i class="fas fa-globe"></i> العربية
+            </button>
+            <div class="user-info">
+                <div class="user-avatar">{{ session.name[0] if session.name else 'A' }}</div>
+                <span>{{ session.name if session.name else 'المدير' }}</span>
+                <a href="{{ url_for('main.logout') }}" class="btn btn-outline-light btn-sm ms-2">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Sidebar -->
+<nav class="main-sidebar">
+    <div class="sidebar-nav">
+        <div class="nav-item">
+            <a href="{{ url_for('main.dashboard') }}" class="nav-link">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>لوحة التحكم</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.bins_management') }}" class="nav-link">
+                <i class="fas fa-trash-alt"></i>
+                <span>الحاويات</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.live_map') }}" class="nav-link">
+                <i class="fas fa-map-marked-alt"></i>
+                <span>الخريطة الحية</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.drivers_management') }}" class="nav-link active">
+                <i class="fas fa-users"></i>
+                <span>السائقون</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="{{ url_for('main.create_task') }}" class="nav-link">
+                <i class="fas fa-tasks"></i>
+                <span>إنشاء مهمة</span>
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="#" class="nav-link">
+                <i class="fas fa-cog"></i>
+                <span>الإعدادات</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main-content">
+    <div class="container-fluid">
+        <!-- Page Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-1">إدارة السائقين</h2>
+                        <p class="text-muted mb-0">إدارة السائقين والمركبات والمهام</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-success" onclick="showAddDriverModal()">
+                            <i class="fas fa-user-plus"></i> إضافة سائق
+                        </button>
+                        <button class="btn btn-primary" onclick="refreshDrivers()">
+                            <i class="fas fa-sync-alt"></i> تحديث
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Drivers Statistics -->
+        <div class="row mb-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon primary">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stats-number">{{ drivers|length }}</div>
+                    <div class="stats-label">إجمالي السائقين</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon success">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="stats-number">{{ drivers|selectattr('status', 'equalto', 'online')|list|length }}</div>
+                    <div class="stats-label">سائقون متصلون</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon warning">
+                        <i class="fas fa-user-clock"></i>
+                    </div>
+                    <div class="stats-number">{{ drivers|selectattr('status', 'equalto', 'busy')|list|length }}</div>
+                    <div class="stats-label">سائقون مشغولون</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon danger">
+                        <i class="fas fa-user-times"></i>
+                    </div>
+                    <div class="stats-number">{{ drivers|selectattr('status', 'equalto', 'offline')|list|length }}</div>
+                    <div class="stats-label">سائقون غير متصلين</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters and Search -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label for="searchInput" class="form-label">البحث</label>
+                                <input type="text" class="form-control" id="searchInput" placeholder="ابحث عن سائق...">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="statusFilter" class="form-label">الحالة</label>
+                                <select class="form-select" id="statusFilter">
+                                    <option value="">جميع الحالات</option>
+                                    <option value="online">متصل</option>
+                                    <option value="offline">غير متصل</option>
+                                    <option value="busy">مشغول</option>
+                                    <option value="break">في استراحة</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="vehicleFilter" class="form-label">المركبة</label>
+                                <select class="form-select" id="vehicleFilter">
+                                    <option value="">جميع المركبات</option>
+                                    <option value="V001">شاحنة صغيرة</option>
+                                    <option value="V002">شاحنة متوسطة</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="licenseFilter" class="form-label">رقم الرخصة</label>
+                                <input type="text" class="form-control" id="licenseFilter" placeholder="رقم الرخصة...">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="dateFilter" class="form-label">تاريخ الانضمام</label>
+                                <input type="date" class="form-control" id="dateFilter">
+                            </div>
+                            <div class="col-md-1 d-flex align-items-end">
+                                <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Drivers Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-list"></i> قائمة السائقين
+                            </h5>
+                            <div>
+                                <button class="btn btn-outline-primary btn-sm" onclick="exportDriversData()">
+                                    <i class="fas fa-download"></i> تصدير CSV
+                                </button>
+                                <button class="btn btn-outline-success btn-sm" onclick="assignRouteToDrivers()">
+                                    <i class="fas fa-route"></i> تعيين مسار
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-container">
+                            <table class="table table-hover" id="driversTable">
+                                <thead>
+                                    <tr>
+                                        <th>
+                                            <input type="checkbox" id="selectAllDrivers" onchange="toggleSelectAllDrivers()">
+                                        </th>
+                                        <th>السائق</th>
+                                        <th>رقم الرخصة</th>
+                                        <th>المركبة</th>
+                                        <th>الحالة</th>
+                                        <th>الموقع الحالي</th>
+                                        <th>المهام المكتملة</th>
+                                        <th>آخر نشاط</th>
+                                        <th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for driver in drivers %}
+                                    <tr data-driver-id="{{ driver.id }}" data-status="{{ driver.status }}" data-vehicle="{{ driver.vehicle_id }}">
+                                        <td>
+                                            <input type="checkbox" class="driver-checkbox" value="{{ driver.id }}">
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-avatar me-3" style="width: 40px; height: 40px;">
+                                                    {{ driver.user.name[0] if driver.user.name else 'S' }}
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold">{{ driver.user.name }}</div>
+                                                    <small class="text-muted">{{ driver.user.email }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ driver.license_number }}</span>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                {% if driver.vehicle_type == "V001" %}
+                                                    <div class="fw-bold">شاحنة صغيرة</div>
+                                                {% elif driver.vehicle_type == "V002" %}
+                                                    <div class="fw-bold">شاحنة متوسطة</div>
+                                                {% elif driver.vehicle_type == "V003" %}
+                                                    <div class="fw-bold">شاحنة كبيرة</div>
+                                                {% elif driver.vehicle_type == "V004" %}
+                                                    <div class="fw-bold">شاحنة خاصة</div>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge {{ driver.status }}">
+                                                {% if driver.status == 'online' %}
+                                                    متصل
+                                                {% elif driver.status == 'offline' %}
+                                                    غير متصل
+                                                {% elif driver.status == 'busy' %}
+                                                    مشغول
+                                                {% elif driver.status == 'break' %}
+                                                    في استراحة
+                                                {% else %}
+                                                    غير محدد
+                                                {% endif %}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if driver.current_location_lat and driver.current_location_lng %}
+                                                <div>
+                                                    <div class="small">
+                                                        <i class="fas fa-map-marker-alt text-success"></i>
+                                                        {{ "%.4f"|format(driver.current_location_lat) }}, {{ "%.4f"|format(driver.current_location_lng) }}
+                                                    </div>
+                                                    <button class="btn btn-outline-primary btn-sm" onclick="viewDriverLocation('{{ driver.id }}')">
+                                                        <i class="fas fa-eye"></i> عرض
+                                                    </button>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">غير متاح</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="text-center">
+                                                <div class="fw-bold text-primary">{{ driver.tasks|length if driver.tasks else 0 }}</div>
+                                                <small class="text-muted">مهمة</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <div class="small">{{ driver.created_at.strftime('%Y-%m-%d') }}</div>
+                                                <small class="text-muted">{{ driver.created_at.strftime('%H:%M') }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-outline-primary btn-sm" onclick="viewDriverDetails('{{ driver.id }}')" title="عرض التفاصيل">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-warning btn-sm" onclick="editDriver('{{ driver.id }}')" title="تعديل">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-success btn-sm" onclick="assignTaskToDriver('{{ driver.id }}')" title="تعيين مهمة">
+                                                    <i class="fas fa-tasks"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info btn-sm" onclick="viewDriverHistory('{{ driver.id }}')" title="سجل المهام">
+                                                    <i class="fas fa-history"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger btn-sm" onclick="deleteDriver('{{ driver.id }}')" title="حذف">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span id="selectedDriversCount">0</span> سائق محدد
+                            </div>
+                            <div>
+                                <button class="btn btn-success" onclick="assignBulkTasks()" disabled id="bulkTaskBtn">
+                                    <i class="fas fa-tasks"></i> تعيين مهام جماعية
+                                </button>
+                                <button class="btn btn-warning" onclick="sendBulkNotification()" disabled id="bulkNotificationBtn">
+                                    <i class="fas fa-bell"></i> إرسال إشعار
+                                </button>
+                                <button class="btn btn-info" onclick="exportSelectedDrivers()" disabled id="bulkExportBtn">
+                                    <i class="fas fa-download"></i> تصدير المحدد
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+{# --- MOVE ALL MODALS HERE (end of content) --- #}
+
+<!-- Add Driver Modal -->
+<div class="modal fade" id="addDriverModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">إضافة سائق جديد</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addDriverForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="driverName" class="form-label">اسم السائق</label>
+                                <input type="text" class="form-control" id="driverName" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="driverEmail" class="form-label">البريد الإلكتروني</label>
+                                <input type="email" class="form-control" id="driverEmail" name="email" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="driverPhone" class="form-label">رقم الهاتف</label>
+                                <input type="tel" class="form-control" id="driverPhone" name="phone">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="driverLicense" class="form-label">رقم الرخصة</label>
+                                <input type="text" class="form-control" id="driverLicense" name="license_number" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="vehicle_id" class="form-label">vehicle Id</label>
+                                <input type="text" class="form-control" id="vehicle_id" name="vehicle_id" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="driverVehicle" class="form-label">المركبة</label>
+                                <select class="form-select" id="driverVehicle" name="vehicle_type" required>
+                                    <option value="">اختر مركبة...</option>
+                                    <option value="V001">شاحنة صغيرة</option>
+                                    <option value="V002">شاحنة متوسطة</option>
+                                    <option value="V003">شاحنة كبيرة</option>
+                                    <option value="V004">شاحنة خاصة</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="driverPassword" class="form-label">كلمة المرور</label>
+                                <input type="password" class="form-control" id="driverPassword" name="password" required autocomplete="new-password">
+                            </div>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddDriver()">إضافة</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Driver Details Modal -->
+<div class="modal fade" id="driverDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تفاصيل السائق</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="driverDetailsContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                <button type="button" class="btn btn-primary" onclick="editDriverFromDetails()">تعديل</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Driver Modal -->
+<div class="modal fade" id="editDriverModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تعديل السائق</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editDriverForm">
+                    <input type="hidden" id="editDriverId" name="driver_id">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editDriverName" class="form-label">اسم السائق</label>
+                                <input type="text" class="form-control" id="editDriverName" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editDriverEmail" class="form-label">البريد الإلكتروني</label>
+                                <input type="email" class="form-control" id="editDriverEmail" name="email" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editDriverId" class="form-label">vehicl id </label>
+                                <input class="form-control" id="editDriverVehicle" name="vehicle_id" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editDriverPhone" class="form-label">رقم الهاتف</label>
+                                <input type="tel" class="form-control" id="editDriverPhone" name="phone">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editDriverLicense" class="form-label">رقم الرخصة</label>
+                                <input type="text" class="form-control" id="editDriverLicense" name="license_number" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editDriverType" class="form-label">المركبة</label>
+                                <select class="form-select" id="editDriverType" name="vehicle_type">
+                                    <option value="">بدون مركبة</option>
+                                    <option value="V001">شاحنة صغيرة</option>
+                                    <option value="V002">شاحنة متوسطة</option>
+                                    <option value="V003">شاحنة كبيرة</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editDriverStatus" class="form-label">الحالة</label>
+                                <select class="form-select" id="editDriverStatus" name="status" required>
+                                    <option value="online">متصل</option>
+                                    <option value="offline">غير متصل</option>
+                                    <option value="busy">مشغول</option>
+                                    <option value="break">في استراحة</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editDriverPassword" class="form-label">كلمة المرور الجديدة (اختياري)</label>
+                                <input type="password" class="form-control" id="editDriverPassword" name="password" placeholder="اتركها فارغة إذا لم تريد تغييرها" autocomplete="new-password">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditDriver()">حفظ التغييرات</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Route Modal -->
+<div class="modal fade" id="assignRouteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تعيين مسار للسائقين</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="assignRouteForm">
+                    <div class="mb-3">
+                        <label for="routeSelect" class="form-label">اختر المسار</label>
+                        <select class="form-select" id="routeSelect" name="route_id" required>
+                            <option value="">اختر مسار...</option>
+                            <option value="route1">المسار 1 - وسط المدينة</option>
+                            <option value="route2">المسار 2 - الأحياء السكنية</option>
+                            <option value="route3">المسار 3 - المناطق التجارية</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="routePriority" class="form-label">الأولوية</label>
+                        <select class="form-select" id="routePriority" name="priority">
+                            <option value="normal">عادية</option>
+                            <option value="high">عالية</option>
+                            <option value="urgent">عاجلة</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="routeDate" class="form-label">تاريخ التنفيذ</label>
+                        <input type="datetime-local" class="form-control" id="routeDate" name="scheduled_time" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" onclick="submitRouteAssignment()">تعيين</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.table tbody tr.selected {
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
+#selectedDriversCount {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.driver-status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 0.5rem;
+}
+
+.driver-status-indicator.online {
+    background-color: var(--success-color);
+    box-shadow: 0 0 6px rgba(39, 174, 96, 0.6);
+}
+
+.driver-status-indicator.offline {
+    background-color: var(--danger-color);
+}
+
+.driver-status-indicator.busy {
+    background-color: var(--warning-color);
+}
+
+.driver-status-indicator.break {
+    background-color: var(--info-color);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+// move modals to body on load (safety-net) + setup listeners
+document.addEventListener('DOMContentLoaded', function () {
+    // Reparent modals to body (temporary safety)
+    document.querySelectorAll('.modal').forEach(modalEl => {
+        if (modalEl.parentElement !== document.body) {
+            document.body.appendChild(modalEl);
+            console.log('Reparented modal to body:', modalEl.id);
+        }
+    });
+
+    // --- Search & filter setup ---
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const vehicleFilter = document.getElementById('vehicleFilter');
+    const licenseFilter = document.getElementById('licenseFilter');
+    const dateFilter = document.getElementById('dateFilter');
+
+    function filterTable() {
+        const searchTerm = (searchInput?.value || '').toLowerCase();
+        const statusValue = statusFilter?.value || '';
+        const vehicleValue = vehicleFilter?.value || '';
+        const licenseValue = (licenseFilter?.value || '').toLowerCase();
+        const dateValue = dateFilter?.value || '';
+
+        document.querySelectorAll('#driversTable tbody tr').forEach(row => {
+            const nameCell = row.querySelector('td:nth-child(2)');
+            const driverName = nameCell ? nameCell.textContent.toLowerCase() : '';
+            const emailEl = nameCell ? nameCell.querySelector('small') : null;
+            const driverEmail = emailEl ? emailEl.textContent.toLowerCase() : '';
+            const licenseEl = row.querySelector('td:nth-child(3)');
+            const license = licenseEl ? licenseEl.textContent.toLowerCase() : '';
+            const vehicleEl = row.querySelector('td:nth-child(4)');
+            const vehicle = vehicleEl ? vehicleEl.textContent.toLowerCase() : '';
+            const status = row.dataset.status || '';
+            const createdDateEl = row.querySelector('td:nth-child(8) .small');
+            const createdDate = createdDateEl ? createdDateEl.textContent : '';
+
+            const matchesSearch = driverName.includes(searchTerm) || driverEmail.includes(searchTerm);
+            const matchesStatus = !statusValue || status === statusValue;
+            const matchesVehicle = !vehicleValue || vehicle.includes(vehicleValue);
+            const matchesLicense = !licenseValue || license.includes(licenseValue);
+            const matchesDate = !dateValue || createdDate.includes(dateValue);
+
+            row.style.display = (matchesSearch && matchesStatus && matchesVehicle && matchesLicense && matchesDate) ? '' : 'none';
+        });
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterTable);
+    if (statusFilter) statusFilter.addEventListener('change', filterTable);
+    if (vehicleFilter) vehicleFilter.addEventListener('change', filterTable);
+    if (licenseFilter) licenseFilter.addEventListener('input', filterTable);
+    if (dateFilter) dateFilter.addEventListener('change', filterTable);
+
+    // Update selected count when checkboxes change
+    document.querySelectorAll('.driver-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedDriversCount);
+    });
+});
+
+// ------------------ Drivers management functions ------------------
+
+// Utility: safe get element value
+const _setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el) {
+        console.warn('Element not found:', id);
+        return;
+    }
+    el.value = val ?? '';
+};
+
+function refreshDrivers() {
+    location.reload();
+}
+
+function showAddDriverModal() {
+    const modalEl = document.getElementById('addDriverModal');
+    if (!modalEl) return alert('Add driver modal not found');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+}
+
+function submitAddDriver() {
+    const form = document.getElementById('addDriverForm');
+    if (!form) return alert('Add driver form not found');
+    const formData = new FormData(form);
+
+    const driverData = {
+        name: formData.get('name'),
+        username: (formData.get('email') || '').split('@')[0],
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        password: formData.get('password'),
+        role: 'driver',
+        license_number: formData.get('license_number'),
+        vehicle_id: formData.get('vehicle_id'),
+        vehicle_type: formData.get('vehicle_type')
+    };
+
+    fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(driverData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) alert('خطأ: ' + data.error);
+        else {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addDriverModal'));
+            if (modal) modal.hide();
+            alert('تم إضافة السائق بنجاح');
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error adding driver:', error);
+        alert('حدث خطأ في إضافة السائق. يرجى المحاولة مرة أخرى.');
+    });
+}
+
+function viewDriverDetails(driverId) {
+    if (!driverId) return console.warn('viewDriverDetails missing id');
+    fetch(`/api/drivers/${driverId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) return alert('خطأ: ' + data.error);
+            const driver = data.driver || {};
+            document.getElementById('driverDetailsContent').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>معلومات السائق</h6>
+                        <p><strong>الاسم:</strong> ${driver.name || 'غير محدد'}</p>
+                        <p><strong>البريد الإلكتروني:</strong> ${driver.email || 'غير محدد'}</p>
+                        <p><strong>رقم الهاتف:</strong> ${driver.phone || 'غير محدد'}</p>
+                        <p><strong>رقم الرخصة:</strong> ${driver.license_number || 'غير محدد'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>حالة العمل</h6>
+                        <p><strong>المركبة:</strong> ${driver.vehicle_id || 'غير محدد'}</p>
+                        <p><strong>الحالة:</strong> ${driver.status || 'غير محدد'}</p>
+                        <p><strong>إجمالي المهام:</strong> ${driver.total_tasks || 0}</p>
+                        <p><strong>المهام المكتملة:</strong> ${driver.completed_tasks || 0}</p>
+                        <p><strong>المهام النشطة:</strong> ${driver.active_tasks || 0}</p>
+                        <p><strong>التقييم:</strong> ${driver.rating || 'غير محدد'}/5</p>
+                        <p><strong>تاريخ الانضمام:</strong> ${driver.created_at ? new Date(driver.created_at).toLocaleDateString('ar-SA') : 'غير محدد'}</p>
+                    </div>
+                </div>
+            `;
+            const modalEl = document.getElementById('driverDetailsModal');
+            if (!modalEl) return alert('Details modal not found');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error loading driver details:', error);
+            alert('حدث خطأ في تحميل تفاصيل السائق');
+        });
+}
+
+async function editDriver(driverId) {
+    console.log('editDriver called with id=', driverId);
+    if (!driverId) return console.warn('editDriver missing id');
+
+    if (typeof bootstrap === 'undefined') {
+        console.error('bootstrap is NOT loaded. modal cannot open.');
+        return;
+    }
+
+    const editModalEl = document.getElementById('editDriverModal');
+    if (!editModalEl) {
+        console.error('Modal element with id "editDriverModal" NOT found in DOM.');
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/api/drivers/${driverId}`);
+        if (!resp.ok) {
+            const text = await resp.text().catch(()=>null);
+            console.error('Fetch error:', resp.status, text);
+            return alert('حدث خطأ في تحميل بيانات السائق (HTTP ' + resp.status + ')');
+        }
+        const data = await resp.json();
+        if (data.error) return alert('خطأ من السيرفر: ' + data.error);
+        const driver = data.driver || {};
+
+        _setVal('editDriverId', driver.id);
+        _setVal('editDriverName', driver.name);
+        _setVal('editDriverEmail', driver.email);
+        _setVal('editDriverPhone', driver.phone);
+        _setVal('editDriverLicense', driver.license_number);
+        _setVal('editDriverVehicle', driver.vehicle_id);
+        _setVal('editDriverType', driver.vehicle_type);
+        _setVal('editDriverStatus', driver.status ?? 'offline');
+
+        const instance = bootstrap.Modal.getInstance(editModalEl) || new bootstrap.Modal(editModalEl);
+        instance.show();
+    } catch (err) {
+        console.error('editDriver caught error:', err);
+        alert('حدث خطأ أثناء تحميل بيانات السائق. افتح console للمزيد.');
+    }
+}
+
+function assignTaskToDriver(driverId) {
+    if (!driverId) return;
+    window.location.href = `{{ url_for('main.create_task') }}?driver=${driverId}`;
+}
+
+function viewDriverHistory(driverId) {
+    console.log('Viewing driver history:', driverId);
+    alert('سيتم عرض سجل مهام السائق');
+}
+
+function viewDriverLocation(driverId) {
+    console.log('Viewing driver location:', driverId);
+    alert('سيتم عرض موقع السائق على الخريطة');
+}
+
+function deleteDriver(driverId) {
+    if (!driverId) return;
+    if (!confirm('هل أنت متأكد من حذف هذا السائق؟ \nسيتم حذف حساب المستخدم أيضاً؟')) return;
+    fetch(`/api/drivers/${driverId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) alert('خطأ: ' + data.error);
+        else {
+            alert('تم حذف السائق بنجاح');
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting driver:', error);
+        alert('حدث خطأ في حذف السائق. يرجى المحاولة مرة أخرى.');
+    });
+}
+
+function submitEditDriver() {
+    const form = document.getElementById('editDriverForm');
+    if (!form) return alert('Edit form not found');
+    const formData = new FormData(form);
+    const driverId = formData.get('driver_id');
+
+    const driverData = {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        license_number: formData.get('license_number'),
+        vehicle_id: formData.get('vehicle_id'),
+        status: formData.get('status'),
+        vehicle_type: formData.get('vehicle_type'),
+    };
+
+    const password = formData.get('password');
+    if (password && password.trim()) driverData.password = password;
+
+    fetch(`/api/drivers/${driverId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(driverData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) alert('خطأ: ' + data.error);
+        else {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editDriverModal'));
+            if (modal) modal.hide();
+            alert('تم تحديث السائق بنجاح');
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error updating driver:', error);
+        alert('حدث خطأ في تحديث السائق. يرجى المحاولة مرة أخرى.');
+    });
+}
+
+function editDriverFromDetails() {
+    const detailsModal = bootstrap.Modal.getInstance(document.getElementById('driverDetailsModal'));
+    if (detailsModal) detailsModal.hide();
+    alert('يرجى إغلاق هذه النافذة والضغط على زر التعديل في الجدول');
+}
+
+function toggleSelectAllDrivers() {
+    const selectAll = document.getElementById('selectAllDrivers');
+    const checkboxes = document.querySelectorAll('.driver-checkbox');
+    if (!selectAll) return;
+    checkboxes.forEach(checkbox => checkbox.checked = selectAll.checked);
+    updateSelectedDriversCount();
+}
+
+function updateSelectedDriversCount() {
+    const selectedCheckboxes = document.querySelectorAll('.driver-checkbox:checked');
+    const count = selectedCheckboxes.length;
+    const selectedCountEl = document.getElementById('selectedDriversCount');
+    if (selectedCountEl) selectedCountEl.textContent = count;
+    const bulkTaskBtn = document.getElementById('bulkTaskBtn');
+    const bulkNotificationBtn = document.getElementById('bulkNotificationBtn');
+    const bulkExportBtn = document.getElementById('bulkExportBtn');
+    if (bulkTaskBtn) bulkTaskBtn.disabled = count === 0;
+    if (bulkNotificationBtn) bulkNotificationBtn.disabled = count === 0;
+    if (bulkExportBtn) bulkExportBtn.disabled = count === 0;
+
+    const selectAll = document.getElementById('selectAllDrivers');
+    const totalCheckboxes = document.querySelectorAll('.driver-checkbox').length;
+    if (selectAll) {
+        selectAll.checked = count === totalCheckboxes;
+        selectAll.indeterminate = count > 0 && count < totalCheckboxes;
+    }
+}
+
+function assignBulkTasks() {
+    const selectedCheckboxes = document.querySelectorAll('.driver-checkbox:checked');
+    const driverIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+    if (driverIds.length === 0) return alert('يرجى اختيار سائق واحد على الأقل');
+    window.location.href = `{{ url_for('main.create_task') }}?drivers=${driverIds.join(',')}`;
+}
+
+function sendBulkNotification() {
+    const selectedCheckboxes = document.querySelectorAll('.driver-checkbox:checked');
+    const driverIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+    console.log('Sending notification to drivers:', driverIds);
+    alert('سيتم إرسال إشعار للسائقين المحددين');
+}
+
+function exportSelectedDrivers() {
+    const selectedCheckboxes = document.querySelectorAll('.driver-checkbox:checked');
+    const driverIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+    console.log('Exporting selected drivers:', driverIds);
+    alert('سيتم تصدير السائقين المحددين');
+}
+
+function exportDriversData() {
+    console.log('Exporting all drivers data to CSV');
+    alert('سيتم تصدير جميع بيانات السائقين');
+}
+
+function assignRouteToDrivers() {
+    const modalEl = document.getElementById('assignRouteModal');
+    if (!modalEl) return alert('Assign route modal not found');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+}
+
+function submitRouteAssignment() {
+    const form = document.getElementById('assignRouteForm');
+    if (!form) return alert('Assign route form not found');
+    const formData = new FormData(form);
+    console.log('Assigning route:', Object.fromEntries(formData));
+    const modal = bootstrap.Modal.getInstance(document.getElementById('assignRouteModal'));
+    if (modal) modal.hide();
+    alert('تم تعيين المسار بنجاح');
+}
+
+function clearFilters() {
+    ['searchInput','statusFilter','vehicleFilter','licenseFilter','dateFilter'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    document.querySelectorAll('#driversTable tbody tr').forEach(row => row.style.display = '');
+}
+</script>
+{% endblock %}
