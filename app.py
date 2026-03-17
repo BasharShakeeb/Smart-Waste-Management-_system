@@ -20,18 +20,22 @@ app = Flask(__name__)
 # Database Configuration - PostgreSQL Setup
 # Priority: 1. DATABASE_URL (for Render/Cloud), 2. Individual variables, 3. Defaults
 DATABASE_URL = os.getenv('DATABASE_URL')
-DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_HOST = os.getenv('DB_HOST', 'dpg-d6sqonk50q8c73fp4740-a') # Updated default to your Render host
 DB_PORT = os.getenv('DB_PORT', '5432')
-DB_USER = os.getenv('DB_USER', 'postgres')
-DB_PASSWORD = os.getenv('DB_PASSWORD', '8655090027')
+DB_USER = os.getenv('DB_USER', 'collect_me_iot_user') # Updated default to your Render user
 DB_NAME = os.getenv('DB_NAME', 'collect_me_iot')
+DB_PASSWORD = os.getenv('DB_PASSWORD', '8655090027') # We will keep a placeholder, preferably set in Render Env
 
 if DATABASE_URL:
+    print("DEBUG: Using DATABASE_URL for connection")
     if DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+    print(f"DEBUG: Using individual variables for connection. Host: {DB_HOST}")
+    # If DB_PASSWORD is not in env, we use the one you provided earlier
+    pwd = os.getenv('DB_PASSWORD', '8655090027') 
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{DB_USER}:{pwd}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
 
 # Configuration
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'collectme-iot-secret-key-2024')
@@ -40,18 +44,25 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'collectme-iot-secret-key-202
 try:
     import psycopg2
     conn_uri = app.config['SQLALCHEMY_DATABASE_URI']
-    test_conn = psycopg2.connect(conn_uri)
+    # Removing any options for pure psycopg2 test
+    simple_uri = conn_uri.split('?')[0] if '?' in conn_uri else conn_uri
+    test_conn = psycopg2.connect(simple_uri)
     test_conn.close()
+    print("DEBUG: PostgreSQL connection successful!")
     
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'pool_pre_ping': True,
         'pool_recycle': 300,
         'echo': False
     }
-    
 except Exception as e:
-    print(f"PostgreSQL connection failed: {e}. Falling back to SQLite.")
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///collect_me_iot.db'
+    print(f"CRITICAL: PostgreSQL connection failed: {e}")
+    # Only fall back to SQLite if NOT on Render (to avoid hidden failures)
+    if os.getenv('RENDER'):
+         print("CRITICAL: We are on Render but DB failed. Application will likely crash.")
+    else:
+        print("DEBUG: Local environment detected. Falling back to SQLite.")
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///collect_me_iot.db'
 
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
