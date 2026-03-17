@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask, session, request, redirect, url_for, jsonify
 from flask_socketio import SocketIO
 import os   
