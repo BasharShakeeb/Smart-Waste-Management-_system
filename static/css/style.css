@@ -1,4 +1,6 @@
-/* Collect Me IoT - Main Styles */
+/* Collect Me IoT - Main Styles
+   Uses CSS logical properties so layout adapts to both RTL and LTR
+   automatically via the dir="" attribute on <html>.                  */
 
 :root {
     --primary-color: #3498db;
@@ -22,11 +24,9 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f8f9fa;
-    direction: rtl;
-    text-align: right;
 }
 
-/* Header Styles */
+/* ── Header ───────────────────────────────────────────────────── */
 .main-header {
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: white;
@@ -35,7 +35,7 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    z-index: 1000;
+    z-index: 1050;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
@@ -96,17 +96,81 @@ body {
     font-weight: bold;
 }
 
-/* Sidebar Styles */
+/* ── Sidebar ──────────────────────────────────────────────────── */
 .main-sidebar {
     position: fixed;
     top: var(--header-height);
-    right: 0;
+    inset-inline-start: 0;          /* start-edge: right in RTL, left in LTR */
     width: var(--sidebar-width);
     height: calc(100vh - var(--header-height));
     background: white;
-    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-    z-index: 999;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1040;
     overflow-y: auto;
+    transition: transform 0.3s ease;
+}
+
+/* ── Sidebar Toggle Button ────────────────────────────────────── */
+.sidebar-toggle {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.6rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+    line-height: 1;
+}
+
+.sidebar-toggle:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Sidebar Overlay (mobile) ─────────────────────────────────── */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1035;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* ── Logout Button in Header ──────────────────────────────────── */
+.btn-logout {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.4);
+    color: white;
+    border-radius: 20px;
+    background: rgba(231, 76, 60, 0.25);
+    text-decoration: none;
+    transition: all 0.25s ease;
+}
+
+.btn-logout:hover {
+    background: var(--danger-color);
+    border-color: var(--danger-color);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(231, 76, 60, 0.35);
 }
 
 .sidebar-nav {
@@ -124,7 +188,7 @@ body {
     color: var(--dark-color);
     text-decoration: none;
     transition: all 0.3s ease;
-    border-right: 3px solid transparent;
+    border-inline-start: 3px solid transparent;
 }
 
 .nav-link:hover {
@@ -135,24 +199,24 @@ body {
 .nav-link.active {
     background: rgba(52, 152, 219, 0.1);
     color: var(--primary-color);
-    border-right-color: var(--primary-color);
+    border-inline-start-color: var(--primary-color);
 }
 
 .nav-link i {
-    margin-left: 1rem;
+    margin-inline-end: 1rem;
     width: 20px;
     text-align: center;
 }
 
-/* Main Content */
+/* ── Main Content ─────────────────────────────────────────────── */
 .main-content {
-    margin-right: var(--sidebar-width);
+    margin-inline-start: var(--sidebar-width);
     margin-top: var(--header-height);
     padding: 2rem;
     min-height: calc(100vh - var(--header-height));
 }
 
-/* Cards */
+/* ── Cards ─────────────────────────────────────────────────────── */
 .card {
     border: none;
     border-radius: 15px;
@@ -170,15 +234,19 @@ body {
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: white;
     border-radius: 15px 15px 0 0 !important;
-    padding: 1.5rem;
+    padding: 1rem 1.5rem;
     border: none;
 }
 
-.card-body {
-    padding: 2rem;
+.card-header .btn {
+    white-space: nowrap;
 }
 
-/* Statistics Cards */
+.card-body {
+    padding: 1.5rem;
+}
+
+/* ── Statistics Cards ──────────────────────────────────────────── */
 .stats-card {
     background: white;
     border-radius: 15px;
@@ -248,16 +316,20 @@ body {
     color: var(--danger-color);
 }
 
-/* Tables */
+/* ── Tables ────────────────────────────────────────────────────── */
 .table-container {
     background: white;
     border-radius: 15px;
-    overflow: hidden;
+    overflow-x: auto;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 }
 
 .table {
     margin-bottom: 0;
+    width: 100%;
+    min-width: 800px;
+    font-size: 0.85rem;
+    table-layout: auto;
 }
 
 .table thead th {
@@ -265,20 +337,22 @@ body {
     border: none;
     font-weight: 600;
     color: var(--dark-color);
-    padding: 1rem;
+    padding: 0.5rem 0.65rem;
+    text-align: start;
 }
 
 .table tbody td {
-    padding: 1rem;
+    padding: 0.5rem 0.65rem;
     vertical-align: middle;
     border-top: 1px solid #f1f3f4;
+    text-align: start;
 }
 
 .table tbody tr:hover {
     background: rgba(52, 152, 219, 0.05);
 }
 
-/* Status Badges */
+/* ── Status Badges ─────────────────────────────────────────────── */
 .status-badge {
     padding: 0.5rem 1rem;
     border-radius: 20px;
@@ -286,6 +360,8 @@ body {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap;
+    display: inline-block;
 }
 
 .status-badge.full {
@@ -324,7 +400,7 @@ body {
     border: 1px solid rgba(243, 156, 18, 0.2);
 }
 
-/* Buttons */
+/* ── Buttons ───────────────────────────────────────────────────── */
 .btn {
     border-radius: 8px;
     font-weight: 600;
@@ -359,7 +435,20 @@ body {
     font-size: 0.8rem;
 }
 
-/* Fill Level Indicators */
+.btn-group .btn {
+    white-space: nowrap;
+}
+
+.table .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.table .btn-group {
+    white-space: nowrap;
+}
+
+/* ── Fill Level Indicators ─────────────────────────────────────── */
 .fill-level {
     display: flex;
     align-items: center;
@@ -393,7 +482,7 @@ body {
     background: linear-gradient(90deg, var(--danger-color), #e74c3c);
 }
 
-/* Map Container */
+/* ── Map Container ─────────────────────────────────────────────── */
 .map-container {
     height: 500px;
     border-radius: 15px;
@@ -401,40 +490,62 @@ body {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .main-sidebar {
+/* ── Collapsed sidebar (desktop toggle) ────────────────────────── */
+body.sidebar-collapsed .main-sidebar {
+    transform: translateX(-100%);
+}
+[dir="rtl"] body.sidebar-collapsed .main-sidebar {
+    transform: translateX(100%);
+}
+body.sidebar-collapsed .main-content {
+    margin-inline-start: 0;
+}
+
+/* ── Responsive Design ─────────────────────────────────────────── */
+@media (max-width: 991px) {
+    /* On tablets and below, sidebar is hidden by default */
+    [dir="ltr"] .main-sidebar {
+        transform: translateX(-100%);
+    }
+    [dir="rtl"] .main-sidebar {
         transform: translateX(100%);
-        transition: transform 0.3s ease;
     }
-    
+
+    /* .show overrides the hidden state */
     .main-sidebar.show {
-        transform: translateX(0);
+        transform: translateX(0) !important;
     }
-    
+
     .main-content {
-        margin-right: 0;
-        padding: 1rem;
-    }
-    
-    .header-content {
-        padding: 0 1rem;
-    }
-    
-    .logo-section h1 {
-        font-size: 1.2rem;
-    }
-    
-    .stats-card {
-        padding: 1.5rem;
-    }
-    
-    .stats-number {
-        font-size: 2rem;
+        margin-inline-start: 0;
+        padding: 1.25rem;
     }
 }
 
-/* Loading Animation */
+@media (max-width: 768px) {
+    .header-content {
+        padding: 0 1rem;
+    }
+
+    .logo-section h1 {
+        font-size: 1.2rem;
+    }
+
+    .stats-card {
+        padding: 1.5rem;
+    }
+
+    .stats-number {
+        font-size: 2rem;
+    }
+
+    /* Hide user name text on small screens */
+    .user-info > span {
+        display: none;
+    }
+}
+
+/* ── Loading Animation ─────────────────────────────────────────── */
 .loading {
     display: inline-block;
     width: 20px;
@@ -449,7 +560,7 @@ body {
     to { transform: rotate(360deg); }
 }
 
-/* Custom Scrollbar */
+/* ── Custom Scrollbar ──────────────────────────────────────────── */
 ::-webkit-scrollbar {
     width: 8px;
 }
@@ -468,7 +579,7 @@ body {
     background: #2980b9;
 }
 
-/* Utility Classes */
+/* ── Utility Classes ───────────────────────────────────────────── */
 .text-primary { color: var(--primary-color) !important; }
 .text-success { color: var(--success-color) !important; }
 .text-warning { color: var(--warning-color) !important; }

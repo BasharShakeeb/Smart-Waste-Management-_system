@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from datetime import datetime
-from models import db, Bin, TaskBin, Task, SensorReading
+from models import db, Bin, TaskBin, Task
 from utils import admin_required, driver_required, validate_json_data
 
 bin_api = Blueprint('bin_api', __name__)
@@ -66,8 +66,9 @@ def api_create_bin():
             latitude=data.get('latitude'),
             longitude=data.get('longitude'),
             capacity=data.get('capacity', 100.0),
+            container_height=data.get('container_height', 100.0),  # ارتفاع الحاوية بالسم
             bin_type=data.get('bin_type', 'general'),
-            fill_level=data.get('fill_level', 0),
+            fill_level=0,
             temperature=data.get('temperature'),
             humidity=data.get('humidity'),
             battery_level=data.get('battery_level', 100),
@@ -141,35 +142,48 @@ def api_delete_bin(bin_id):
 @bin_api.route('/api/bins/<int:bin_id>/sensor-readings', methods=['POST'])
 def api_add_sensor_reading(bin_id):
     try:
+        # Fetch the single existing row for this bin
         bin_obj = Bin.query.get_or_404(bin_id)
         data = request.get_json()
         print("data:", data)
         if not data:
             return jsonify({'error': 'JSON data required'}), 400
-        
-        # Create sensor reading
-        reading = SensorReading(
-            bin_id=bin_id,
-            fill_level=data.get('fill_level', bin_obj.fill_level),
-            temperature=data.get('temperature'),
-            humidity=data.get('humidity'),
-            battery_level=data.get('battery_level', bin_obj.battery_level),
-            signal_strength=data.get('signal_strength')
-        )
-        
-        # Update bin with latest readings
-        bin_obj.fill_level = reading.fill_level
-        bin_obj.temperature = reading.temperature
-        bin_obj.humidity = reading.humidity
-        bin_obj.battery_level = reading.battery_level
-        bin_obj.signal_strength = reading.signal_strength
-        bin_obj.updated_at = datetime.utcnow()
-        
-        db.session.add(reading)
+
+        # ── حساب fill_level في الـ Backend ──
+        # الحساس يرسل distance فقط، والـ Backend يحسب النسبة
+        distance = data.get('distance') # receive distance from sensor
+
+        if distance is None:
+            return jsonify({'error': '"distance" field is required'}), 400
+
+        height = bin_obj.container_height # get container height from database
+        if not height or height <= 0:
+            return jsonify({'error': 'container_height is not set for this bin'}), 400
+
+        # Fill Level (%) = ((Container Height − Distance) / Container Height) × 100
+        fill_level = ((height - distance) / height) * 100
+        fill_level = max(0, min(100, int(fill_level)))  # تقييد بين 0 و 100
+
+        # تحديث الصف الموجود في قاعدة البيانات
+        bin_obj.fill_level      = fill_level
+        bin_obj.temperature     = data.get('temperature',    bin_obj.temperature)
+        bin_obj.humidity        = data.get('humidity',       bin_obj.humidity)
+        bin_obj.battery_level   = data.get('battery_level',  bin_obj.battery_level)
+        bin_obj.signal_strength = data.get('signal_strength', bin_obj.signal_strength)
+        bin_obj.updated_at      = datetime.utcnow() # update the time of the last update
+
+        # Persist — no new row inserted
         db.session.commit()
-        
-        return jsonify({'message': 'Sensor reading added successfully', 'reading': reading.to_dict()}), 201
+
+        return jsonify({
+            'message': 'Sensor data received and fill level calculated',
+            'distance_cm': distance,
+            'container_height_cm': height,
+            'fill_level': fill_level,
+            'bin': bin_obj.to_dict()
+        }), 200
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 # API endpoints for full bins and driver bins

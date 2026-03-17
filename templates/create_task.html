@@ -12,30 +12,36 @@
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 {% endblock %}
 
-{% block title %}إنشاء مهمة - Collect Me IoT{% endblock %}
+{% block title %}{{ t('createTask.title') }} - Collect Me IoT{% endblock %}
 
 {% block content %}
 <!-- Header -->
 <header class="main-header">
     <div class="header-content">
         <div class="logo-section">
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                <i class="bx bx-menu"></i>
+            </button>
             <i class="fas fa-recycle"></i>
             <h1>Collect Me IoT</h1>
         </div>
         <div class="header-actions">
-            <button class="btn btn-outline-light btn-sm" onclick="toggleLanguage()">
-                <i class="fas fa-globe"></i> العربية
-            </button>
+            <a href="/set-locale/{{ 'ar' if locale == 'en' else 'en' }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-globe"></i> {{ t('langSwitcher.switchTo') }}
+            </a>
             <div class="user-info">
                 <div class="user-avatar">{{ session.name[0] if session.name else 'A' }}</div>
-                <span>{{ session.name if session.name else 'المدير' }}</span>
-                <a href="{{ url_for('main.logout') }}" class="btn btn-outline-light btn-sm ms-2">
-                    <i class="fas fa-sign-out-alt"></i>
-                </a>
+                <span>{{ session.name if session.name else t('common.admin') }}</span>
             </div>
+            <a href="{{ url_for('main.logout') }}" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
         </div>
     </div>
 </header>
+
+<!-- Sidebar Overlay -->
+<div class="sidebar-overlay"></div>
 
 <!-- Sidebar -->
 <nav class="main-sidebar">
@@ -43,38 +49,38 @@
         <div class="nav-item">
             <a href="{{ url_for('main.dashboard') }}" class="nav-link">
                 <i class="fas fa-tachometer-alt"></i>
-                <span>لوحة التحكم</span>
+                <span>{{ t('nav.dashboard') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.bins_management') }}" class="nav-link">
                 <i class="fas fa-trash-alt"></i>
-                <span>الحاويات</span>
+                <span>{{ t('nav.bins') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.live_map') }}" class="nav-link">
                 <i class="fas fa-map-marked-alt"></i>
-                <span>الخريطة الحية</span>
+                <span>{{ t('nav.liveMap') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.drivers_management') }}" class="nav-link">
                 <i class="fas fa-users"></i>
-                <span>السائقون</span>
+                <span>{{ t('nav.drivers') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.create_task') }}" class="nav-link active">
                 <i class="fas fa-tasks"></i>
-                <span>إنشاء مهمة</span>
+                <span>{{ t('nav.createTask') }}</span>
             </a>
         </div>
         <!-- Reports navigation removed -->
         <div class="nav-item">
             <a href="#" class="nav-link">
                 <i class="fas fa-cog"></i>
-                <span>الإعدادات</span>
+                <span>{{ t('nav.settings') }}</span>
             </a>
         </div>
     </div>
@@ -86,14 +92,14 @@
         <!-- Page Header -->
         <div class="row mb-4">
             <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
-                        <h2 class="mb-1">إنشاء مهمة جديدة</h2>
-                        <p class="text-muted mb-0">إنشاء مهمة جمع نفايات وتخصيصها للسائق</p>
+                        <h2 class="mb-1">{{ t('createTask.newTask') }}</h2>
+                        <p class="text-muted mb-0">{{ t('createTask.description') }}</p>
                     </div>
-                    <div>
+                    <div class="d-flex gap-2 flex-wrap">
                         <button class="btn btn-outline-secondary" onclick="window.history.back()">
-                            <i class="fas fa-arrow-right"></i> رجوع
+                            <i class="fas fa-arrow-right"></i> {{ t('common.back') }}
                         </button>
                     </div>
                 </div>
@@ -107,38 +113,38 @@
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <i class="fas fa-trash-alt"></i> اختيار الحاويات
+                            <i class="fas fa-trash-alt"></i> {{ t('createTask.selectBins') }}
                         </h5>
                     </div>
                     <div class="card-body">
                         <!-- Filters for Bins -->
                         <div class="row mb-3">
                             <div class="col-md-4">
-                                <label for="binSearch" class="form-label">البحث في الحاويات</label>
-                                <input type="text" class="form-control" id="binSearch" placeholder="ابحث عن حاوية...">
+                                <label for="binSearch" class="form-label">{{ t('createTask.searchBins') }}</label>
+                                <input type="text" class="form-control" id="binSearch" placeholder="{{ t('createTask.searchBinsPlaceholder') }}">
                             </div>
                             <div class="col-md-3">
-                                <label for="binStatusFilter" class="form-label">حالة الامتلاء</label>
+                                <label for="binStatusFilter" class="form-label">{{ t('createTask.fillStatus') }}</label>
                                 <select class="form-select" id="binStatusFilter">
-                                    <option value="">جميع الحالات</option>
-                                    <option value="full">ممتلئ (80%+)</option>
-                                    <option value="half">نصف ممتلئ (40-79%)</option>
-                                    <option value="empty">فارغ (أقل من 40%)</option>
+                                    <option value="">{{ t('common.allStatuses') }}</option>
+                                    <option value="full">{{ t('createTask.fullOver80') }}</option>
+                                    <option value="half">{{ t('createTask.halfFull40to79') }}</option>
+                                    <option value="empty">{{ t('createTask.emptyUnder40') }}</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label for="binLocationFilter" class="form-label">الموقع</label>
+                                <label for="binLocationFilter" class="form-label">{{ t('common.location') }}</label>
                                 <select class="form-select" id="binLocationFilter">
-                                    <option value="">جميع المواقع</option>
-                                    <option value="main">الشارع الرئيسي</option>
-                                    <option value="park">المنتزه</option>
-                                    <option value="downtown">وسط المدينة</option>
-                                    <option value="shopping">مركز التسوق</option>
+                                    <option value="">{{ t('common.allLocations') }}</option>
+                                    <option value="main">{{ t('bins.locationMainStreet') }}</option>
+                                    <option value="park">{{ t('bins.locationPark') }}</option>
+                                    <option value="downtown">{{ t('bins.locationDowntown') }}</option>
+                                    <option value="shopping">{{ t('bins.locationShopping') }}</option>
                                 </select>
                             </div>
                             <div class="col-md-2 d-flex align-items-end">
                                 <button class="btn btn-outline-secondary w-100" onclick="clearBinFilters()">
-                                    <i class="fas fa-times"></i> مسح
+                                    <i class="fas fa-times"></i> {{ t('createTask.clear') }}
                                 </button>
                             </div>
                         </div>
@@ -146,7 +152,7 @@
                         <!-- Selected Bins Summary -->
                         <div class="alert alert-info" id="selectedBinsSummary" style="display: none;">
                             <i class="fas fa-info-circle"></i>
-                            <span id="selectedBinsCount">0</span> حاوية محددة
+                            <span id="selectedBinsCount">0</span> {{ t('createTask.binsSelected') }}
                         </div>
 
                         <!-- Bins List -->
@@ -161,7 +167,7 @@
                                         <label class="form-check-label" for="bin{{ bin.id }}"></label>
                                     </div>
                                     <div class="flex-grow-1">
-                                        <div class="d-flex justify-content-between align-items-center">
+                                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                                             <div>
                                                 <h6 class="mb-1">{{ bin.bin_id }}</h6>
                                                 <p class="mb-1 text-muted">{{ bin.location }}</p>
@@ -176,13 +182,13 @@
                                             <div class="text-end">
                                                 <span
                                                     class="status-badge {{ 'full' if bin.fill_level >= 80 else 'half' if bin.fill_level >= 40 else 'empty' }}">
-                                                    {{ 'ممتلئ' if bin.fill_level >= 80 else 'نصف ممتلئ' if
-                                                    bin.fill_level >= 40 else 'فارغ' }}
+                                                    {{ t('common.full') if bin.fill_level >= 80 else t('common.halfFull') if
+                                                    bin.fill_level >= 40 else t('common.empty') }}
                                                 </span>
                                                 <div class="mt-2">
                                                     <small class="text-muted">
-                                                        آخر جمع: {{ bin.last_collected.strftime('%Y-%m-%d') if
-                                                        bin.last_collected else 'لم يتم الجمع' }}
+                                                        {{ t('common.lastCollected') }}: {{ bin.last_collected.strftime('%Y-%m-%d') if
+                                                        bin.last_collected else t('common.notCollected') }}
                                                     </small>
                                                 </div>
                                             </div>
@@ -194,12 +200,12 @@
                         </div>
 
                         <!-- Quick Actions -->
-                        <div class="mt-3">
+                        <div class="mt-3 d-flex gap-2 flex-wrap">
                             <button class="btn btn-outline-primary btn-sm" onclick="selectAllFullBins()">
-                                <i class="fas fa-check-double"></i> تحديد جميع الحاويات الممتلئة
+                                <i class="fas fa-check-double"></i> {{ t('createTask.selectAllFull') }}
                             </button>
                             <button class="btn btn-outline-secondary btn-sm" onclick="clearAllSelections()">
-                                <i class="fas fa-times"></i> إلغاء التحديد
+                                <i class="fas fa-times"></i> {{ t('createTask.clearSelection') }}
                             </button>
                         </div>
                     </div>
@@ -211,18 +217,17 @@
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <i class="fas fa-cog"></i> تفاصيل المهمة
+                            <i class="fas fa-cog"></i> {{ t('createTask.taskDetails') }}
                         </h5>
                     </div>
                     <div class="card-body">
                         <form id="taskForm">
                             <!-- Driver Selection -->
                             <div class="mb-3">
-                                <label for="driverSelect" class="form-label">السائق</label>
+                                <label for="driverSelect" class="form-label">{{ t('createTask.driver') }}</label>
                                 <select class="form-select" id="driverSelect" name="driver_id" required>
-                                    <option value="">اختر سائق...</option>
+                                    <option value="">{{ t('createTask.selectDriverPlaceholder') }}</option>
                                     {% for driver in drivers %}
-                                    <!-- افترض أن driver.vehicle_id هو معرف الـ Vehicle (رقم) -->
                                     <option value="{{ driver.id }}" data-vehicle="{{ driver.vehicle_id }}">
                                         {{ driver.user.name }} - {{ driver.vehicle_id }}
                                     </option>
@@ -232,7 +237,7 @@
 
                             <!-- Vehicle Info (Auto-filled based on driver) -->
                             <div class="mb-3">
-                                <label for="vehicleInfo" class="form-label">المركبة</label>
+                                <label for="vehicleInfo" class="form-label">{{ t('createTask.vehicle') }}</label>
                                 <input type="text" class="form-control" id="vehicleInfo" readonly>
                                 <!-- hidden input to send to backend -->
                                 <input type="hidden" id="vehicleIdInput" name="vehicle_id" value="">
@@ -240,37 +245,37 @@
 
                             <!-- Priority -->
                             <div class="mb-3">
-                                <label for="prioritySelect" class="form-label">الأولوية</label>
+                                <label for="prioritySelect" class="form-label">{{ t('common.priority') }}</label>
                                 <select class="form-select" id="prioritySelect" name="priority">
-                                    <option value="normal">عادية</option>
-                                    <option value="high">عالية</option>
-                                    <option value="urgent">عاجلة</option>
+                                    <option value="normal">{{ t('common.priorityNormal') }}</option>
+                                    <option value="high">{{ t('common.priorityHigh') }}</option>
+                                    <option value="urgent">{{ t('common.priorityUrgent') }}</option>
                                 </select>
                             </div>
 
                             <!-- Scheduled Time -->
                             <div class="mb-3">
-                                <label for="scheduledTime" class="form-label">وقت التنفيذ</label>
+                                <label for="scheduledTime" class="form-label">{{ t('createTask.scheduledTime') }}</label>
                                 <input type="datetime-local" class="form-control" id="scheduledTime"
                                     name="scheduled_time" required>
                             </div>
 
                             <!-- Project -->
                             <div class="mb-3">
-                                <label for="projectSelect" class="form-label">المشروع</label>
+                                <label for="projectSelect" class="form-label">{{ t('createTask.project') }}</label>
                                 <select class="form-select" id="projectSelect" name="project">
-                                    <option value="default">المشروع الافتراضي</option>
-                                    <option value="city_center">وسط المدينة</option>
-                                    <option value="residential">الأحياء السكنية</option>
-                                    <option value="commercial">المناطق التجارية</option>
+                                    <option value="default">{{ t('createTask.projectDefault') }}</option>
+                                    <option value="city_center">{{ t('createTask.projectCityCenter') }}</option>
+                                    <option value="residential">{{ t('createTask.projectResidential') }}</option>
+                                    <option value="commercial">{{ t('createTask.projectCommercial') }}</option>
                                 </select>
                             </div>
 
                             <!-- Notes -->
                             <div class="mb-3">
-                                <label for="taskNotes" class="form-label">ملاحظات</label>
+                                <label for="taskNotes" class="form-label">{{ t('common.notes') }}</label>
                                 <textarea class="form-control" id="taskNotes" name="notes" rows="3"
-                                    placeholder="أي ملاحظات إضافية..."></textarea>
+                                    placeholder="{{ t('createTask.additionalNotes') }}"></textarea>
                             </div>
 
                             <!-- Route Optimization -->
@@ -278,26 +283,26 @@
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="optimizeRoute" checked>
                                     <label class="form-check-label" for="optimizeRoute">
-                                        تحسين المسار تلقائياً
+                                        {{ t('createTask.optimizeRoute') }}
                                     </label>
                                 </div>
                             </div>
 
                             <!-- Estimated Duration -->
                             <div class="mb-3">
-                                <label class="form-label">المدة المتوقعة</label>
+                                <label class="form-label">{{ t('createTask.estimatedDuration') }}</label>
                                 <div class="input-group">
                                     <input type="number" class="form-control" id="estimatedDuration" value="0" readonly>
-                                    <span class="input-group-text">دقيقة</span>
+                                    <span class="input-group-text">{{ t('createTask.minutes') }}</span>
                                 </div>
                             </div>
 
                             <!-- Distance -->
                             <div class="mb-3">
-                                <label class="form-label">المسافة المتوقعة</label>
+                                <label class="form-label">{{ t('createTask.estimatedDistance') }}</label>
                                 <div class="input-group">
                                     <input type="number" class="form-control" id="estimatedDistance" value="0" readonly>
-                                    <span class="input-group-text">كم</span>
+                                    <span class="input-group-text">{{ t('createTask.km') }}</span>
                                 </div>
                             </div>
                         </form>
@@ -309,13 +314,13 @@
                     <div class="card-body">
                         <div class="d-grid gap-2">
                             <button class="btn btn-primary btn-lg" onclick="createTask()" id="createTaskBtn">
-                                <i class="fas fa-plus"></i> إنشاء المهمة
+                                <i class="fas fa-plus"></i> {{ t('createTask.createTaskBtn') }}
                             </button>
                             <button class="btn btn-outline-info" onclick="previewRoute()" id="previewRouteBtn" disabled>
-                                <i class="fas fa-map"></i> معاينة المسار
+                                <i class="fas fa-map"></i> {{ t('createTask.previewRoute') }}
                             </button>
                             <button class="btn btn-outline-secondary" onclick="saveAsDraft()">
-                                <i class="fas fa-save"></i> حفظ كمسودة
+                                <i class="fas fa-save"></i> {{ t('createTask.saveAsDraft') }}
                             </button>
                         </div>
                     </div>
@@ -329,7 +334,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <i class="fas fa-route"></i> معاينة المسار
+                            <i class="fas fa-route"></i> {{ t('createTask.routePreview') }}
                         </h5>
                     </div>
                     <div class="card-body">
@@ -338,31 +343,31 @@
                                 <div id="routeMap" style="height: 400px; width: 100%; border-radius: 8px;"></div>
                             </div>
                             <div class="col-md-4">
-                                <h6>تفاصيل المسار</h6>
+                                <h6>{{ t('createTask.routeDetails') }}</h6>
                                 <div class="route-details">
                                     <div class="d-flex justify-content-between mb-2">
-                                        <span>عدد الحاويات:</span>
+                                        <span>{{ t('createTask.binsCount') }}:</span>
                                         <span id="routeBinsCount">0</span>
                                     </div>
                                     <div class="d-flex justify-content-between mb-2">
-                                        <span>المسافة الإجمالية:</span>
-                                        <span id="routeTotalDistance">0 كم</span>
+                                        <span>{{ t('createTask.totalDistance') }}:</span>
+                                        <span id="routeTotalDistance">0 {{ t('createTask.km') }}</span>
                                     </div>
                                     <div class="d-flex justify-content-between mb-2">
-                                        <span>المدة المتوقعة:</span>
-                                        <span id="routeTotalDuration">0 دقيقة</span>
+                                        <span>{{ t('createTask.totalDuration') }}:</span>
+                                        <span id="routeTotalDuration">0 {{ t('createTask.minutes') }}</span>
                                     </div>
                                     <div class="d-flex justify-content-between mb-2">
-                                        <span>وقت البداية:</span>
+                                        <span>{{ t('createTask.startTime') }}:</span>
                                         <span id="routeStartTime">-</span>
                                     </div>
                                     <div class="d-flex justify-content-between mb-2">
-                                        <span>وقت الانتهاء:</span>
+                                        <span>{{ t('createTask.endTime') }}:</span>
                                         <span id="routeEndTime">-</span>
                                     </div>
                                 </div>
 
-                                <h6 class="mt-4">ترتيب الحاويات</h6>
+                                <h6 class="mt-4">{{ t('createTask.binOrder') }}</h6>
                                 <div id="routeBinsList" class="route-bins-list">
                                     <!-- Will be populated dynamically -->
                                 </div>
@@ -417,7 +422,7 @@
         align-items: center;
         justify-content: center;
         font-weight: bold;
-        margin-left: 0.5rem;
+        margin-inline-start: 0.5rem;
     }
 
     .form-check-input:checked+.form-check-label {
@@ -613,7 +618,7 @@
 
     // function createTask() {
     //     if (selectedBins.length === 0) {
-    //         alert('يرجى اختيار حاوية واحدة على الأقل');
+    //         alert('{{ t('createTask.selectAtLeastOneBin') }}');
     //         return;
     //     }
 
@@ -626,7 +631,7 @@
     //     // Show loading state
     //     const createBtn = document.getElementById('createTaskBtn');
     //     const originalText = createBtn.innerHTML;
-    //     createBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإنشاء...';
+    //     createBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ t('createTask.creating') }}';
     //     createBtn.disabled = true;
 
     //     // Simulate API call
@@ -638,7 +643,7 @@
     //         createBtn.disabled = false;
 
     //         // Show success message
-    //         alert('تم إنشاء المهمة بنجاح!');
+    //         alert('{{ t('createTask.taskCreated') }}');
 
     //         // Redirect to dashboard or task list
     //         window.location.href = '{{ url_for("main.dashboard") }}';
@@ -646,7 +651,7 @@
     // }
     async function createTask() {
     if (selectedBins.length === 0) {
-        alert('يرجى اختيار حاوية واحدة على الأقل');
+        alert('{{ t('createTask.selectAtLeastOneBin') }}');
         return;
     }
 
@@ -662,7 +667,7 @@
     const vehicleId = selectedOption.getAttribute('data-vehicle');
     
     if (!vehicleId) {
-        alert('يرجى اختيار سائق يحتوي على مركبة');
+        alert('{{ t('createTask.selectDriverWithVehicle') }}');
         return;
     }
     formData.set('vehicle_id', vehicleId);
@@ -673,7 +678,7 @@
     // Show loading state
     const createBtn = document.getElementById('createTaskBtn');
     const originalText = createBtn.innerHTML;
-    createBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإنشاء...';
+    createBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ t('createTask.creating') }}';
     createBtn.disabled = true;
 
     try {
@@ -688,17 +693,17 @@
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || 'فشل في إنشاء المهمة');
+            throw new Error(data.error || '{{ t('createTask.taskCreateError') }}');
         }
 
         console.log('Task created:', data);
-        alert('تم إنشاء المهمة بنجاح!');
+        alert('{{ t('createTask.taskCreated') }}');
 
         // Redirect to dashboard
         window.location.href = '{{ url_for("main.dashboard") }}';
     } catch (err) {
         console.error(err);
-        alert('خطأ: ' + err.message);
+        alert(err.message);
     } finally {
         createBtn.innerHTML = originalText;
         createBtn.disabled = false;
@@ -707,7 +712,7 @@
 
     function previewRoute() {
         if (selectedBins.length === 0) {
-            alert('يرجى اختيار حاوية واحدة على الأقل');
+            alert('{{ t('createTask.selectAtLeastOneBin') }}');
             return;
         }
 
@@ -716,8 +721,8 @@
 
         // Update route details
         document.getElementById('routeBinsCount').textContent = selectedBins.length;
-        document.getElementById('routeTotalDistance').textContent = document.getElementById('estimatedDistance').value + ' كم';
-        document.getElementById('routeTotalDuration').textContent = document.getElementById('estimatedDuration').value + ' دقيقة';
+        document.getElementById('routeTotalDistance').textContent = document.getElementById('estimatedDistance').value + ' {{ t('createTask.km') }}';
+        document.getElementById('routeTotalDuration').textContent = document.getElementById('estimatedDuration').value + ' {{ t('createTask.minutes') }}';
 
         const scheduledTime = new Date(document.getElementById('scheduledTime').value);
         document.getElementById('routeStartTime').textContent = scheduledTime.toLocaleTimeString('ar-SA');
@@ -765,7 +770,7 @@
         formData.append('status', 'draft');
 
         console.log('Saving as draft:', Object.fromEntries(formData));
-        alert('تم حفظ المهمة كمسودة');
+        alert('{{ t('createTask.savedAsDraft') }}');
     }
 
     // Handle URL parameters for pre-selected bins or drivers
@@ -839,7 +844,7 @@
                     <div style="text-align: center; font-family: 'Cairo', sans-serif;">
                         <h6>${binInfo.bin_id}</h6>
                         <p><i class="fas fa-map-marker-alt"></i> ${binInfo.location}</p>
-                        <p><i class="fas fa-list-ol"></i> نقطة رقم ${index + 1}</p>
+                        <p><i class="fas fa-list-ol"></i> {{ t('createTask.pointNumber') }} ${index + 1}</p>
                     </div>
                 `);
 
@@ -863,7 +868,7 @@
                     iconSize: [30, 30]
                 })
             }).addTo(routeMap);
-            depotMarker.bindPopup('<div style="text-align: center;"><h6>نقطة الانطلاق</h6></div>');
+            depotMarker.bindPopup('<div style="text-align: center;"><h6>{{ t('createTask.startPoint') }}</h6></div>');
             routeMarkers.push(depotMarker);
 
             // Create routing control

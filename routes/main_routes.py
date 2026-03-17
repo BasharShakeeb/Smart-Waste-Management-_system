@@ -6,12 +6,7 @@ main_routes = Blueprint('main', __name__)
 
 @main_routes.route('/')
 def index():
-    if 'user_id' in session:
-        if session['role'] == 'manager':
-            return redirect(url_for('main.dashboard'))
-        else:
-            return redirect(url_for('main.driver_dashboard'))
-    return redirect(url_for('main.login'))
+    return render_template('landing.html')
 
 @main_routes.route('/login', methods=['GET', 'POST'])
 def login():
@@ -44,12 +39,14 @@ def login():
 
 @main_routes.route('/logout')
 def logout():
-    driver_id= session['user_id']
-    driver = Driver.query.filter_by(user_id=driver_id).first()
-    driver.status = 'offline'
-    db.session.commit() 
+    user_id = session.get('user_id')
+    if user_id:
+        driver = Driver.query.filter_by(user_id=user_id).first()
+        if driver:
+            driver.status = 'offline'
+            db.session.commit()
     session.clear()
-    return redirect(url_for('main.login'))
+    return redirect(url_for('main.index'))
 
 @main_routes.route('/dashboard')
 def dashboard():

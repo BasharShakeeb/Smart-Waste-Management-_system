@@ -1,29 +1,35 @@
 {% extends "base.html" %}
 
-{% block title %}إدارة السائقين - Collect Me IoT{% endblock %}
+{% block title %}{{ t('drivers.management') }} - Collect Me IoT{% endblock %}
 
 {% block content %}
 <!-- Header -->
 <header class="main-header">
     <div class="header-content">
         <div class="logo-section">
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                <i class="bx bx-menu"></i>
+            </button>
             <i class="fas fa-recycle"></i>
             <h1>Collect Me IoT</h1>
         </div>
         <div class="header-actions">
-            <button class="btn btn-outline-light btn-sm" onclick="toggleLanguage()">
-                <i class="fas fa-globe"></i> العربية
-            </button>
+            <a href="/set-locale/{{ 'ar' if locale == 'en' else 'en' }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-globe"></i> {{ t('langSwitcher.switchTo') }}
+            </a>
             <div class="user-info">
                 <div class="user-avatar">{{ session.name[0] if session.name else 'A' }}</div>
-                <span>{{ session.name if session.name else 'المدير' }}</span>
-                <a href="{{ url_for('main.logout') }}" class="btn btn-outline-light btn-sm ms-2">
-                    <i class="fas fa-sign-out-alt"></i>
-                </a>
+                <span>{{ session.name if session.name else t('common.admin') }}</span>
             </div>
+            <a href="{{ url_for('main.logout') }}" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
         </div>
     </div>
 </header>
+
+<!-- Sidebar Overlay -->
+<div class="sidebar-overlay"></div>
 
 <!-- Sidebar -->
 <nav class="main-sidebar">
@@ -31,37 +37,43 @@
         <div class="nav-item">
             <a href="{{ url_for('main.dashboard') }}" class="nav-link">
                 <i class="fas fa-tachometer-alt"></i>
-                <span>لوحة التحكم</span>
+                <span>{{ t('nav.dashboard') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.bins_management') }}" class="nav-link">
                 <i class="fas fa-trash-alt"></i>
-                <span>الحاويات</span>
+                <span>{{ t('nav.bins') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.live_map') }}" class="nav-link">
                 <i class="fas fa-map-marked-alt"></i>
-                <span>الخريطة الحية</span>
+                <span>{{ t('nav.liveMap') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.drivers_management') }}" class="nav-link active">
                 <i class="fas fa-users"></i>
-                <span>السائقون</span>
+                <span>{{ t('nav.drivers') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.create_task') }}" class="nav-link">
                 <i class="fas fa-tasks"></i>
-                <span>إنشاء مهمة</span>
+                <span>{{ t('nav.createTask') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="#" class="nav-link">
                 <i class="fas fa-cog"></i>
-                <span>الإعدادات</span>
+                <span>{{ t('nav.settings') }}</span>
+            </a>
+        </div>
+        <div class="nav-item mt-auto">
+            <a href="{{ url_for('main.logout') }}" class="nav-link nav-logout">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
             </a>
         </div>
     </div>
@@ -73,17 +85,17 @@
         <!-- Page Header -->
         <div class="row mb-4">
             <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                     <div>
-                        <h2 class="mb-1">إدارة السائقين</h2>
-                        <p class="text-muted mb-0">إدارة السائقين والمركبات والمهام</p>
+                        <h2 class="mb-1">{{ t('drivers.management') }}</h2>
+                        <p class="text-muted mb-0">{{ t('drivers.manageAll') }}</p>
                     </div>
-                    <div>
+                    <div class="d-flex gap-2 flex-wrap">
                         <button class="btn btn-success" onclick="showAddDriverModal()">
-                            <i class="fas fa-user-plus"></i> إضافة سائق
+                            <i class="fas fa-user-plus"></i> {{ t('drivers.addDriver') }}
                         </button>
                         <button class="btn btn-primary" onclick="refreshDrivers()">
-                            <i class="fas fa-sync-alt"></i> تحديث
+                            <i class="fas fa-sync-alt"></i> {{ t('common.refresh') }}
                         </button>
                     </div>
                 </div>
@@ -98,7 +110,7 @@
                         <i class="fas fa-users"></i>
                     </div>
                     <div class="stats-number">{{ drivers|length }}</div>
-                    <div class="stats-label">إجمالي السائقين</div>
+                    <div class="stats-label">{{ t('drivers.totalDrivers') }}</div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
@@ -107,7 +119,7 @@
                         <i class="fas fa-user-check"></i>
                     </div>
                     <div class="stats-number">{{ drivers|selectattr('status', 'equalto', 'online')|list|length }}</div>
-                    <div class="stats-label">سائقون متصلون</div>
+                    <div class="stats-label">{{ t('drivers.onlineDrivers') }}</div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
@@ -116,7 +128,7 @@
                         <i class="fas fa-user-clock"></i>
                     </div>
                     <div class="stats-number">{{ drivers|selectattr('status', 'equalto', 'busy')|list|length }}</div>
-                    <div class="stats-label">سائقون مشغولون</div>
+                    <div class="stats-label">{{ t('drivers.busyDrivers') }}</div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
@@ -125,7 +137,7 @@
                         <i class="fas fa-user-times"></i>
                     </div>
                     <div class="stats-number">{{ drivers|selectattr('status', 'equalto', 'offline')|list|length }}</div>
-                    <div class="stats-label">سائقون غير متصلين</div>
+                    <div class="stats-label">{{ t('drivers.offlineDrivers') }}</div>
                 </div>
             </div>
         </div>
@@ -137,33 +149,33 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-3">
-                                <label for="searchInput" class="form-label">البحث</label>
-                                <input type="text" class="form-control" id="searchInput" placeholder="ابحث عن سائق...">
+                                <label for="searchInput" class="form-label">{{ t('common.search') }}</label>
+                                <input type="text" class="form-control" id="searchInput" placeholder="{{ t('drivers.searchPlaceholder') }}">
                             </div>
                             <div class="col-md-2">
-                                <label for="statusFilter" class="form-label">الحالة</label>
+                                <label for="statusFilter" class="form-label">{{ t('common.status') }}</label>
                                 <select class="form-select" id="statusFilter">
-                                    <option value="">جميع الحالات</option>
-                                    <option value="online">متصل</option>
-                                    <option value="offline">غير متصل</option>
-                                    <option value="busy">مشغول</option>
-                                    <option value="break">في استراحة</option>
+                                    <option value="">{{ t('common.allStatuses') }}</option>
+                                    <option value="online">{{ t('drivers.statusOnline') }}</option>
+                                    <option value="offline">{{ t('drivers.statusOffline') }}</option>
+                                    <option value="busy">{{ t('drivers.statusBusy') }}</option>
+                                    <option value="break">{{ t('drivers.statusBreak') }}</option>
                                 </select>
                             </div>
                             <div class="col-md-2">
-                                <label for="vehicleFilter" class="form-label">المركبة</label>
+                                <label for="vehicleFilter" class="form-label">{{ t('drivers.vehicle') }}</label>
                                 <select class="form-select" id="vehicleFilter">
-                                    <option value="">جميع المركبات</option>
-                                    <option value="V001">شاحنة صغيرة</option>
-                                    <option value="V002">شاحنة متوسطة</option>
+                                    <option value="">{{ t('drivers.allVehicles') }}</option>
+                                    <option value="V001">{{ t('drivers.vehicleSmall') }}</option>
+                                    <option value="V002">{{ t('drivers.vehicleMedium') }}</option>
                                 </select>
                             </div>
                             <div class="col-md-2">
-                                <label for="licenseFilter" class="form-label">رقم الرخصة</label>
-                                <input type="text" class="form-control" id="licenseFilter" placeholder="رقم الرخصة...">
+                                <label for="licenseFilter" class="form-label">{{ t('drivers.licenseNumber') }}</label>
+                                <input type="text" class="form-control" id="licenseFilter" placeholder="{{ t('drivers.licenseNumber') }}...">
                             </div>
                             <div class="col-md-2">
-                                <label for="dateFilter" class="form-label">تاريخ الانضمام</label>
+                                <label for="dateFilter" class="form-label">{{ t('drivers.dateFilter') }}</label>
                                 <input type="date" class="form-control" id="dateFilter">
                             </div>
                             <div class="col-md-1 d-flex align-items-end">
@@ -182,16 +194,16 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <h5 class="mb-0">
-                                <i class="fas fa-list"></i> قائمة السائقين
+                                <i class="fas fa-list"></i> {{ t('drivers.driversList') }}
                             </h5>
-                            <div>
+                            <div class="d-flex gap-2 flex-wrap">
                                 <button class="btn btn-outline-primary btn-sm" onclick="exportDriversData()">
-                                    <i class="fas fa-download"></i> تصدير CSV
+                                    <i class="fas fa-download"></i> {{ t('common.exportCSV') }}
                                 </button>
                                 <button class="btn btn-outline-success btn-sm" onclick="assignRouteToDrivers()">
-                                    <i class="fas fa-route"></i> تعيين مسار
+                                    <i class="fas fa-route"></i> {{ t('drivers.assignRoute') }}
                                 </button>
                             </div>
                         </div>
@@ -204,14 +216,14 @@
                                         <th>
                                             <input type="checkbox" id="selectAllDrivers" onchange="toggleSelectAllDrivers()">
                                         </th>
-                                        <th>السائق</th>
-                                        <th>رقم الرخصة</th>
-                                        <th>المركبة</th>
-                                        <th>الحالة</th>
-                                        <th>الموقع الحالي</th>
-                                        <th>المهام المكتملة</th>
-                                        <th>آخر نشاط</th>
-                                        <th>الإجراءات</th>
+                                        <th>{{ t('drivers.name') }}</th>
+                                        <th>{{ t('drivers.licenseNumber') }}</th>
+                                        <th>{{ t('drivers.vehicle') }}</th>
+                                        <th>{{ t('common.status') }}</th>
+                                        <th>{{ t('drivers.currentLocation') }}</th>
+                                        <th>{{ t('drivers.completedTasks') }}</th>
+                                        <th>{{ t('drivers.lastActivity') }}</th>
+                                        <th>{{ t('common.actions') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -237,28 +249,28 @@
                                         <td>
                                             <div>
                                                 {% if driver.vehicle_type == "V001" %}
-                                                    <div class="fw-bold">شاحنة صغيرة</div>
+                                                    <div class="fw-bold">{{ t('drivers.vehicleSmall') }}</div>
                                                 {% elif driver.vehicle_type == "V002" %}
-                                                    <div class="fw-bold">شاحنة متوسطة</div>
+                                                    <div class="fw-bold">{{ t('drivers.vehicleMedium') }}</div>
                                                 {% elif driver.vehicle_type == "V003" %}
-                                                    <div class="fw-bold">شاحنة كبيرة</div>
+                                                    <div class="fw-bold">{{ t('drivers.vehicleLarge') }}</div>
                                                 {% elif driver.vehicle_type == "V004" %}
-                                                    <div class="fw-bold">شاحنة خاصة</div>
+                                                    <div class="fw-bold">{{ t('drivers.vehicleSpecial') }}</div>
                                                 {% endif %}
                                             </div>
                                         </td>
                                         <td>
                                             <span class="status-badge {{ driver.status }}">
                                                 {% if driver.status == 'online' %}
-                                                    متصل
+                                                    {{ t('drivers.statusOnline') }}
                                                 {% elif driver.status == 'offline' %}
-                                                    غير متصل
+                                                    {{ t('drivers.statusOffline') }}
                                                 {% elif driver.status == 'busy' %}
-                                                    مشغول
+                                                    {{ t('drivers.statusBusy') }}
                                                 {% elif driver.status == 'break' %}
-                                                    في استراحة
+                                                    {{ t('drivers.statusBreak') }}
                                                 {% else %}
-                                                    غير محدد
+                                                    {{ t('common.notAvailable') }}
                                                 {% endif %}
                                             </span>
                                         </td>
@@ -270,17 +282,17 @@
                                                         {{ "%.4f"|format(driver.current_location_lat) }}, {{ "%.4f"|format(driver.current_location_lng) }}
                                                     </div>
                                                     <button class="btn btn-outline-primary btn-sm" onclick="viewDriverLocation('{{ driver.id }}')">
-                                                        <i class="fas fa-eye"></i> عرض
+                                                        <i class="fas fa-eye"></i> {{ t('common.view') }}
                                                     </button>
                                                 </div>
                                             {% else %}
-                                                <span class="text-muted">غير متاح</span>
+                                                <span class="text-muted">{{ t('common.notAvailable') }}</span>
                                             {% endif %}
                                         </td>
                                         <td>
                                             <div class="text-center">
                                                 <div class="fw-bold text-primary">{{ driver.tasks|length if driver.tasks else 0 }}</div>
-                                                <small class="text-muted">مهمة</small>
+                                                <small class="text-muted">{{ t('drivers.task') }}</small>
                                             </div>
                                         </td>
                                         <td>
@@ -291,19 +303,19 @@
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <button class="btn btn-outline-primary btn-sm" onclick="viewDriverDetails('{{ driver.id }}')" title="عرض التفاصيل">
+                                                <button class="btn btn-outline-primary btn-sm" onclick="viewDriverDetails('{{ driver.id }}')" title="{{ t('drivers.driverDetails') }}">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
-                                                <button class="btn btn-outline-warning btn-sm" onclick="editDriver('{{ driver.id }}')" title="تعديل">
+                                                <button class="btn btn-outline-warning btn-sm" onclick="editDriver('{{ driver.id }}')" title="{{ t('drivers.editDriver') }}">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-                                                <button class="btn btn-outline-success btn-sm" onclick="assignTaskToDriver('{{ driver.id }}')" title="تعيين مهمة">
+                                                <button class="btn btn-outline-success btn-sm" onclick="assignTaskToDriver('{{ driver.id }}')" title="{{ t('drivers.assignTask') }}">
                                                     <i class="fas fa-tasks"></i>
                                                 </button>
-                                                <button class="btn btn-outline-info btn-sm" onclick="viewDriverHistory('{{ driver.id }}')" title="سجل المهام">
+                                                <button class="btn btn-outline-info btn-sm" onclick="viewDriverHistory('{{ driver.id }}')" title="{{ t('drivers.taskHistory') }}">
                                                     <i class="fas fa-history"></i>
                                                 </button>
-                                                <button class="btn btn-outline-danger btn-sm" onclick="deleteDriver('{{ driver.id }}')" title="حذف">
+                                                <button class="btn btn-outline-danger btn-sm" onclick="deleteDriver('{{ driver.id }}')" title="{{ t('drivers.confirmDeleteDriver') }}">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </div>
@@ -322,20 +334,21 @@
         <div class="row mt-3">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <span id="selectedDriversCount">0</span> سائق محدد
+                    <div class="card-body py-3">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                            <div class="fw-semibold">
+                                <span id="selectedDriversCount" class="fs-5">0</span>
+                                <span class="text-muted">{{ t('drivers.title') }}</span>
                             </div>
-                            <div>
-                                <button class="btn btn-success" onclick="assignBulkTasks()" disabled id="bulkTaskBtn">
-                                    <i class="fas fa-tasks"></i> تعيين مهام جماعية
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button class="btn btn-success btn-sm" onclick="assignBulkTasks()" disabled id="bulkTaskBtn">
+                                    <i class="fas fa-tasks"></i> {{ t('drivers.assignBulkTasks') }}
                                 </button>
-                                <button class="btn btn-warning" onclick="sendBulkNotification()" disabled id="bulkNotificationBtn">
-                                    <i class="fas fa-bell"></i> إرسال إشعار
+                                <button class="btn btn-warning btn-sm" onclick="sendBulkNotification()" disabled id="bulkNotificationBtn">
+                                    <i class="fas fa-bell"></i> {{ t('drivers.sendNotification') }}
                                 </button>
-                                <button class="btn btn-info" onclick="exportSelectedDrivers()" disabled id="bulkExportBtn">
-                                    <i class="fas fa-download"></i> تصدير المحدد
+                                <button class="btn btn-info btn-sm" onclick="exportSelectedDrivers()" disabled id="bulkExportBtn">
+                                    <i class="fas fa-download"></i> {{ t('drivers.exportSelected') }}
                                 </button>
                             </div>
                         </div>
@@ -353,7 +366,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">إضافة سائق جديد</h5>
+                <h5 class="modal-title">{{ t('drivers.addNewDriver') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -361,13 +374,13 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="driverName" class="form-label">اسم السائق</label>
+                                <label for="driverName" class="form-label">{{ t('drivers.driverName') }}</label>
                                 <input type="text" class="form-control" id="driverName" name="name" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="driverEmail" class="form-label">البريد الإلكتروني</label>
+                                <label for="driverEmail" class="form-label">{{ t('drivers.driverEmail') }}</label>
                                 <input type="email" class="form-control" id="driverEmail" name="email" required>
                             </div>
                         </div>
@@ -376,14 +389,14 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="driverPhone" class="form-label">رقم الهاتف</label>
+                                <label for="driverPhone" class="form-label">{{ t('drivers.phone') }}</label>
                                 <input type="tel" class="form-control" id="driverPhone" name="phone">
                             </div>
                         </div>
 
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="driverLicense" class="form-label">رقم الرخصة</label>
+                                <label for="driverLicense" class="form-label">{{ t('drivers.licenseNumber') }}</label>
                                 <input type="text" class="form-control" id="driverLicense" name="license_number" required>
                             </div>
                         </div>
@@ -399,20 +412,20 @@
 
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="driverVehicle" class="form-label">المركبة</label>
+                                <label for="driverVehicle" class="form-label">{{ t('drivers.vehicle') }}</label>
                                 <select class="form-select" id="driverVehicle" name="vehicle_type" required>
-                                    <option value="">اختر مركبة...</option>
-                                    <option value="V001">شاحنة صغيرة</option>
-                                    <option value="V002">شاحنة متوسطة</option>
-                                    <option value="V003">شاحنة كبيرة</option>
-                                    <option value="V004">شاحنة خاصة</option>
+                                    <option value="">{{ t('drivers.selectVehicle') }}</option>
+                                    <option value="V001">{{ t('drivers.vehicleSmall') }}</option>
+                                    <option value="V002">{{ t('drivers.vehicleMedium') }}</option>
+                                    <option value="V003">{{ t('drivers.vehicleLarge') }}</option>
+                                    <option value="V004">{{ t('drivers.vehicleSpecial') }}</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="driverPassword" class="form-label">كلمة المرور</label>
+                                <label for="driverPassword" class="form-label">{{ t('drivers.driverPassword') }}</label>
                                 <input type="password" class="form-control" id="driverPassword" name="password" required autocomplete="new-password">
                             </div>
                         </div>
@@ -421,8 +434,8 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-primary" onclick="submitAddDriver()">إضافة</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('common.cancel') }}</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddDriver()">{{ t('common.add') }}</button>
             </div>
         </div>
     </div>
@@ -433,15 +446,15 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">تفاصيل السائق</h5>
+                <h5 class="modal-title">{{ t('drivers.driverDetails') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="driverDetailsContent">
                 <!-- Content will be loaded dynamically -->
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                <button type="button" class="btn btn-primary" onclick="editDriverFromDetails()">تعديل</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('common.close') }}</button>
+                <button type="button" class="btn btn-primary" onclick="editDriverFromDetails()">{{ t('drivers.editDriver') }}</button>
             </div>
         </div>
     </div>
@@ -452,7 +465,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">تعديل السائق</h5>
+                <h5 class="modal-title">{{ t('drivers.editDriver') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -461,19 +474,19 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editDriverName" class="form-label">اسم السائق</label>
+                                <label for="editDriverName" class="form-label">{{ t('drivers.driverName') }}</label>
                                 <input type="text" class="form-control" id="editDriverName" name="name" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editDriverEmail" class="form-label">البريد الإلكتروني</label>
+                                <label for="editDriverEmail" class="form-label">{{ t('drivers.driverEmail') }}</label>
                                 <input type="email" class="form-control" id="editDriverEmail" name="email" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editDriverId" class="form-label">vehicl id </label>
+                                <label for="editDriverVehicle" class="form-label">vehicle id </label>
                                 <input class="form-control" id="editDriverVehicle" name="vehicle_id" required>
                             </div>
                         </div>
@@ -481,13 +494,13 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editDriverPhone" class="form-label">رقم الهاتف</label>
+                                <label for="editDriverPhone" class="form-label">{{ t('drivers.phone') }}</label>
                                 <input type="tel" class="form-control" id="editDriverPhone" name="phone">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editDriverLicense" class="form-label">رقم الرخصة</label>
+                                <label for="editDriverLicense" class="form-label">{{ t('drivers.licenseNumber') }}</label>
                                 <input type="text" class="form-control" id="editDriverLicense" name="license_number" required>
                             </div>
                         </div>
@@ -495,24 +508,24 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editDriverType" class="form-label">المركبة</label>
+                                <label for="editDriverType" class="form-label">{{ t('drivers.vehicle') }}</label>
                                 <select class="form-select" id="editDriverType" name="vehicle_type">
-                                    <option value="">بدون مركبة</option>
-                                    <option value="V001">شاحنة صغيرة</option>
-                                    <option value="V002">شاحنة متوسطة</option>
-                                    <option value="V003">شاحنة كبيرة</option>
+                                    <option value="">{{ t('drivers.noVehicle') }}</option>
+                                    <option value="V001">{{ t('drivers.vehicleSmall') }}</option>
+                                    <option value="V002">{{ t('drivers.vehicleMedium') }}</option>
+                                    <option value="V003">{{ t('drivers.vehicleLarge') }}</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editDriverStatus" class="form-label">الحالة</label>
+                                <label for="editDriverStatus" class="form-label">{{ t('common.status') }}</label>
                                 <select class="form-select" id="editDriverStatus" name="status" required>
-                                    <option value="online">متصل</option>
-                                    <option value="offline">غير متصل</option>
-                                    <option value="busy">مشغول</option>
-                                    <option value="break">في استراحة</option>
+                                    <option value="online">{{ t('drivers.statusOnline') }}</option>
+                                    <option value="offline">{{ t('drivers.statusOffline') }}</option>
+                                    <option value="busy">{{ t('drivers.statusBusy') }}</option>
+                                    <option value="break">{{ t('drivers.statusBreak') }}</option>
                                 </select>
                             </div>
                         </div>
@@ -520,16 +533,16 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editDriverPassword" class="form-label">كلمة المرور الجديدة (اختياري)</label>
-                                <input type="password" class="form-control" id="editDriverPassword" name="password" placeholder="اتركها فارغة إذا لم تريد تغييرها" autocomplete="new-password">
+                                <label for="editDriverPassword" class="form-label">{{ t('drivers.newPassword') }}</label>
+                                <input type="password" class="form-control" id="editDriverPassword" name="password" placeholder="{{ t('drivers.newPasswordHint') }}" autocomplete="new-password">
                             </div>
                         </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-primary" onclick="submitEditDriver()">حفظ التغييرات</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('common.cancel') }}</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditDriver()">{{ t('common.save') }}</button>
             </div>
         </div>
     </div>
@@ -540,37 +553,37 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">تعيين مسار للسائقين</h5>
+                <h5 class="modal-title">{{ t('drivers.assignRouteModal') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="assignRouteForm">
                     <div class="mb-3">
-                        <label for="routeSelect" class="form-label">اختر المسار</label>
+                        <label for="routeSelect" class="form-label">{{ t('drivers.selectRoute') }}</label>
                         <select class="form-select" id="routeSelect" name="route_id" required>
-                            <option value="">اختر مسار...</option>
-                            <option value="route1">المسار 1 - وسط المدينة</option>
-                            <option value="route2">المسار 2 - الأحياء السكنية</option>
-                            <option value="route3">المسار 3 - المناطق التجارية</option>
+                            <option value="">{{ t('drivers.selectRoutePlaceholder') }}</option>
+                            <option value="route1">{{ t('drivers.route1') }}</option>
+                            <option value="route2">{{ t('drivers.route2') }}</option>
+                            <option value="route3">{{ t('drivers.route3') }}</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="routePriority" class="form-label">الأولوية</label>
+                        <label for="routePriority" class="form-label">{{ t('common.priority') }}</label>
                         <select class="form-select" id="routePriority" name="priority">
-                            <option value="normal">عادية</option>
-                            <option value="high">عالية</option>
-                            <option value="urgent">عاجلة</option>
+                            <option value="normal">{{ t('common.priorityNormal') }}</option>
+                            <option value="high">{{ t('common.priorityHigh') }}</option>
+                            <option value="urgent">{{ t('common.priorityUrgent') }}</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="routeDate" class="form-label">تاريخ التنفيذ</label>
+                        <label for="routeDate" class="form-label">{{ t('drivers.executionDate') }}</label>
                         <input type="datetime-local" class="form-control" id="routeDate" name="scheduled_time" required>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-primary" onclick="submitRouteAssignment()">تعيين</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('common.cancel') }}</button>
+                <button type="button" class="btn btn-primary" onclick="submitRouteAssignment()">{{ t('drivers.assignRoute') }}</button>
             </div>
         </div>
     </div>
@@ -607,7 +620,7 @@
     height: 12px;
     border-radius: 50%;
     display: inline-block;
-    margin-left: 0.5rem;
+    margin-inline-start: 0.5rem;
 }
 
 .driver-status-indicator.online {
@@ -632,9 +645,7 @@
 {% block extra_js %}
 
 <script>
-// move modals to body on load (safety-net) + setup listeners
 document.addEventListener('DOMContentLoaded', function () {
-    // Reparent modals to body (temporary safety)
     document.querySelectorAll('.modal').forEach(modalEl => {
         if (modalEl.parentElement !== document.body) {
             document.body.appendChild(modalEl);
@@ -642,7 +653,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // --- Search & filter setup ---
     const searchInput = document.getElementById('searchInput');
     const statusFilter = document.getElementById('statusFilter');
     const vehicleFilter = document.getElementById('vehicleFilter');
@@ -685,15 +695,11 @@ document.addEventListener('DOMContentLoaded', function () {
     if (licenseFilter) licenseFilter.addEventListener('input', filterTable);
     if (dateFilter) dateFilter.addEventListener('change', filterTable);
 
-    // Update selected count when checkboxes change
     document.querySelectorAll('.driver-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', updateSelectedDriversCount);
     });
 });
 
-// ------------------ Drivers management functions ------------------
-
-// Utility: safe get element value
 const _setVal = (id, val) => {
     const el = document.getElementById(id);
     if (!el) {
@@ -738,18 +744,21 @@ function submitAddDriver() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.error) alert('خطأ: ' + data.error);
-        else {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('addDriverModal'));
-            if (modal) modal.hide();
-            alert('تم إضافة السائق بنجاح');
-            location.reload();
-        }
-    })
-    .catch(error => {
-        console.error('Error adding driver:', error);
-        alert('حدث خطأ في إضافة السائق. يرجى المحاولة مرة أخرى.');
-    });
+            const connError = {{ t("common.connectionError") | tojson }};
+            if (data.error) alert(connError + ': ' + data.error);
+            else {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addDriverModal'));
+                if (modal) modal.hide();
+                const driverAddedMsg = {{ t("drivers.driverAdded") | tojson }};
+                alert(driverAddedMsg);
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error adding driver:', error);
+            const addErrorMsg = {{ t("drivers.addError") | tojson }};
+            alert(addErrorMsg);
+        });
 }
 
 function viewDriverDetails(driverId) {
@@ -757,26 +766,27 @@ function viewDriverDetails(driverId) {
     fetch(`/api/drivers/${driverId}`)
         .then(response => response.json())
         .then(data => {
-            if (data.error) return alert('خطأ: ' + data.error);
+            const connError = {{ t("common.connectionError") | tojson }};
+            if (data.error) return alert(connError + ': ' + data.error);
             const driver = data.driver || {};
             document.getElementById('driverDetailsContent').innerHTML = `
                 <div class="row">
                     <div class="col-md-6">
-                        <h6>معلومات السائق</h6>
-                        <p><strong>الاسم:</strong> ${driver.name || 'غير محدد'}</p>
-                        <p><strong>البريد الإلكتروني:</strong> ${driver.email || 'غير محدد'}</p>
-                        <p><strong>رقم الهاتف:</strong> ${driver.phone || 'غير محدد'}</p>
-                        <p><strong>رقم الرخصة:</strong> ${driver.license_number || 'غير محدد'}</p>
+                        <h6>{{ t("drivers.driverInfo") }}</h6>
+                        <p><strong>{{ t("drivers.name") }}:</strong> ${driver.name || '{{ t("common.notAvailable") }}'}</p>
+                        <p><strong>{{ t("drivers.driverEmail") }}:</strong> ${driver.email || '{{ t("common.notAvailable") }}'}</p>
+                        <p><strong>{{ t("drivers.phone") }}:</strong> ${driver.phone || '{{ t("common.notAvailable") }}'}</p>
+                        <p><strong>{{ t("drivers.licenseNumber") }}:</strong> ${driver.license_number || '{{ t("common.notAvailable") }}'}</p>
                     </div>
                     <div class="col-md-6">
-                        <h6>حالة العمل</h6>
-                        <p><strong>المركبة:</strong> ${driver.vehicle_id || 'غير محدد'}</p>
-                        <p><strong>الحالة:</strong> ${driver.status || 'غير محدد'}</p>
-                        <p><strong>إجمالي المهام:</strong> ${driver.total_tasks || 0}</p>
-                        <p><strong>المهام المكتملة:</strong> ${driver.completed_tasks || 0}</p>
-                        <p><strong>المهام النشطة:</strong> ${driver.active_tasks || 0}</p>
-                        <p><strong>التقييم:</strong> ${driver.rating || 'غير محدد'}/5</p>
-                        <p><strong>تاريخ الانضمام:</strong> ${driver.created_at ? new Date(driver.created_at).toLocaleDateString('ar-SA') : 'غير محدد'}</p>
+                        <h6>{{ t("drivers.workStatus") }}</h6>
+                        <p><strong>{{ t("drivers.vehicle") }}:</strong> ${driver.vehicle_id || '{{ t("common.notAvailable") }}'}</p>
+                        <p><strong>{{ t("common.status") }}:</strong> ${driver.status || '{{ t("common.notAvailable") }}'}</p>
+                        <p><strong>{{ t("drivers.totalTasks") }}:</strong> ${driver.total_tasks || 0}</p>
+                        <p><strong>{{ t("drivers.completedTasks") }}:</strong> ${driver.completed_tasks || 0}</p>
+                        <p><strong>{{ t("drivers.activeTasks") }}:</strong> ${driver.active_tasks || 0}</p>
+                        <p><strong>{{ t("drivers.rating") }}:</strong> ${driver.rating || '{{ t("common.notAvailable") }}'}/5</p>
+                        <p><strong>{{ t("drivers.joinDate") }}:</strong> ${driver.created_at ? new Date(driver.created_at).toLocaleDateString('ar-SA') : '{{ t("common.notAvailable") }}'}</p>
                     </div>
                 </div>
             `;
@@ -787,7 +797,8 @@ function viewDriverDetails(driverId) {
         })
         .catch(error => {
             console.error('Error loading driver details:', error);
-            alert('حدث خطأ في تحميل تفاصيل السائق');
+            const loadErrorMsg = {{ t("drivers.loadError") | tojson }};
+            alert(loadErrorMsg);
         });
 }
 
@@ -811,10 +822,12 @@ async function editDriver(driverId) {
         if (!resp.ok) {
             const text = await resp.text().catch(()=>null);
             console.error('Fetch error:', resp.status, text);
-            return alert('حدث خطأ في تحميل بيانات السائق (HTTP ' + resp.status + ')');
+            const loadErrorMsg = {{ t("drivers.loadError") | tojson }};
+            return alert(loadErrorMsg + ' (HTTP ' + resp.status + ')');
         }
         const data = await resp.json();
-        if (data.error) return alert('خطأ من السيرفر: ' + data.error);
+        const connError = {{ t("common.connectionError") | tojson }};
+        if (data.error) return alert(connError + ': ' + data.error);
         const driver = data.driver || {};
 
         _setVal('editDriverId', driver.id);
@@ -830,7 +843,8 @@ async function editDriver(driverId) {
         instance.show();
     } catch (err) {
         console.error('editDriver caught error:', err);
-        alert('حدث خطأ أثناء تحميل بيانات السائق. افتح console للمزيد.');
+        const loadErrorMsg = {{ t("drivers.loadError") | tojson }};
+        alert(loadErrorMsg);
     }
 }
 
@@ -841,32 +855,38 @@ function assignTaskToDriver(driverId) {
 
 function viewDriverHistory(driverId) {
     console.log('Viewing driver history:', driverId);
-    alert('سيتم عرض سجل مهام السائق');
+    const historyMsg = {{ t("drivers.showDriverHistory") | tojson }};
+    alert(historyMsg);
 }
 
 function viewDriverLocation(driverId) {
     console.log('Viewing driver location:', driverId);
-    alert('سيتم عرض موقع السائق على الخريطة');
+    const locationMsg = {{ t("drivers.showDriverLocation") | tojson }};
+    alert(locationMsg);
 }
 
 function deleteDriver(driverId) {
     if (!driverId) return;
-    if (!confirm('هل أنت متأكد من حذف هذا السائق؟ \nسيتم حذف حساب المستخدم أيضاً؟')) return;
+    const confirmDeleteMsg = {{ t("drivers.confirmDeleteDriver") | tojson }};
+    if (!confirm(confirmDeleteMsg)) return;
     fetch(`/api/drivers/${driverId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
     })
     .then(response => response.json())
     .then(data => {
-        if (data.error) alert('خطأ: ' + data.error);
+        const connError = {{ t("common.connectionError") | tojson }};
+        if (data.error) alert(connError + ': ' + data.error);
         else {
-            alert('تم حذف السائق بنجاح');
+            const deletedMsg = {{ t("drivers.driverDeleted") | tojson }};
+            alert(deletedMsg);
             location.reload();
         }
     })
     .catch(error => {
         console.error('Error deleting driver:', error);
-        alert('حدث خطأ في حذف السائق. يرجى المحاولة مرة أخرى.');
+        const deleteErrorMsg = {{ t("drivers.deleteError") | tojson }};
+        alert(deleteErrorMsg);
     });
 }
 
@@ -896,24 +916,27 @@ function submitEditDriver() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.error) alert('خطأ: ' + data.error);
+        const connError = {{ t("common.connectionError") | tojson }};
+        if (data.error) alert(connError + ': ' + data.error);
         else {
             const modal = bootstrap.Modal.getInstance(document.getElementById('editDriverModal'));
             if (modal) modal.hide();
-            alert('تم تحديث السائق بنجاح');
+            const updatedMsg = {{ t("drivers.driverUpdated") | tojson }};
+            alert(updatedMsg);
             location.reload();
         }
     })
     .catch(error => {
         console.error('Error updating driver:', error);
-        alert('حدث خطأ في تحديث السائق. يرجى المحاولة مرة أخرى.');
+        const updateErrorMsg = {{ t("drivers.updateError") | tojson }};
+        alert(updateErrorMsg);
     });
 }
 
 function editDriverFromDetails() {
     const detailsModal = bootstrap.Modal.getInstance(document.getElementById('driverDetailsModal'));
     if (detailsModal) detailsModal.hide();
-    alert('يرجى إغلاق هذه النافذة والضغط على زر التعديل في الجدول');
+    alert('{{ t("drivers.closeEditHint") }}');
 }
 
 function toggleSelectAllDrivers() {
@@ -947,7 +970,7 @@ function updateSelectedDriversCount() {
 function assignBulkTasks() {
     const selectedCheckboxes = document.querySelectorAll('.driver-checkbox:checked');
     const driverIds = Array.from(selectedCheckboxes).map(cb => cb.value);
-    if (driverIds.length === 0) return alert('يرجى اختيار سائق واحد على الأقل');
+    if (driverIds.length === 0) return alert('{{ t("drivers.selectAtLeastOne") }}');
     window.location.href = `{{ url_for('main.create_task') }}?drivers=${driverIds.join(',')}`;
 }
 
@@ -955,19 +978,19 @@ function sendBulkNotification() {
     const selectedCheckboxes = document.querySelectorAll('.driver-checkbox:checked');
     const driverIds = Array.from(selectedCheckboxes).map(cb => cb.value);
     console.log('Sending notification to drivers:', driverIds);
-    alert('سيتم إرسال إشعار للسائقين المحددين');
+    alert('{{ t("drivers.notificationSent") }}');
 }
 
 function exportSelectedDrivers() {
     const selectedCheckboxes = document.querySelectorAll('.driver-checkbox:checked');
     const driverIds = Array.from(selectedCheckboxes).map(cb => cb.value);
     console.log('Exporting selected drivers:', driverIds);
-    alert('سيتم تصدير السائقين المحددين');
+    alert('{{ t("drivers.exportSelected") }}');
 }
 
 function exportDriversData() {
     console.log('Exporting all drivers data to CSV');
-    alert('سيتم تصدير جميع بيانات السائقين');
+    alert('{{ t("drivers.exportAll") }}');
 }
 
 function assignRouteToDrivers() {
@@ -984,7 +1007,7 @@ function submitRouteAssignment() {
     console.log('Assigning route:', Object.fromEntries(formData));
     const modal = bootstrap.Modal.getInstance(document.getElementById('assignRouteModal'));
     if (modal) modal.hide();
-    alert('تم تعيين المسار بنجاح');
+    alert('{{ t("drivers.routeAssigned") }}');
 }
 
 function clearFilters() {

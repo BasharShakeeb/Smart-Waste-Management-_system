@@ -11,12 +11,12 @@
             <h1>Collect Me IoT</h1>
         </div>
         <div class="header-actions">
-            <button class="btn btn-outline-light btn-sm" onclick="toggleLanguage()">
-                <i class="fas fa-globe"></i> العربية
-            </button>
+            <a href="/set-locale/{{ 'ar' if locale == 'en' else 'en' }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-globe"></i> {{ t('langSwitcher.switchTo') }}
+            </a>
             <div class="user-info">
                 <div class="user-avatar">{{ session.name[0] if session.name else 'A' }}</div>
-                <span>{{ session.name if session.name else 'المدير' }}</span>
+                <span>{{ session.name if session.name else t('common.admin') }}</span>
                 <a href="{{ url_for('main.logout') }}" class="btn btn-outline-light btn-sm ms-2">
                     <i class="fas fa-sign-out-alt"></i>
                 </a>
@@ -31,43 +31,43 @@
         <div class="nav-item">
             <a href="{{ url_for('main.dashboard') }}" class="nav-link">
                 <i class="fas fa-tachometer-alt"></i>
-                <span>لوحة التحكم</span>
+                <span>{{ t('nav.dashboard') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.bins_management') }}" class="nav-link">
                 <i class="fas fa-trash-alt"></i>
-                <span>الحاويات</span>
+                <span>{{ t('nav.bins') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.live_map') }}" class="nav-link">
                 <i class="fas fa-map-marked-alt"></i>
-                <span>الخريطة الحية</span>
+                <span>{{ t('nav.liveMap') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.drivers_management') }}" class="nav-link">
                 <i class="fas fa-users"></i>
-                <span>السائقون</span>
+                <span>{{ t('nav.drivers') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.create_task') }}" class="nav-link">
                 <i class="fas fa-tasks"></i>
-                <span>إنشاء مهمة</span>
+                <span>{{ t('nav.createTask') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.reports') }}" class="nav-link active">
                 <i class="fas fa-chart-bar"></i>
-                <span>التقارير</span>
+                <span>{{ t('nav.reports') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="#" class="nav-link">
                 <i class="fas fa-cog"></i>
-                <span>الإعدادات</span>
+                <span>{{ t('nav.settings') }}</span>
             </a>
         </div>
     </div>
@@ -79,17 +79,17 @@
         <!-- Page Header -->
         <div class="row mb-4">
             <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
                         <h2 class="mb-1">التقارير والإحصائيات</h2>
                         <p class="text-muted mb-0">تحليل شامل لأداء نظام إدارة النفايات</p>
                     </div>
-                    <div>
+                    <div class="d-flex gap-2 flex-wrap">
                         <button class="btn btn-success" onclick="exportReport()">
                             <i class="fas fa-download"></i> تصدير تقرير
                         </button>
                         <button class="btn btn-primary" onclick="refreshReports()">
-                            <i class="fas fa-sync-alt"></i> تحديث
+                            <i class="fas fa-sync-alt"></i> {{ t('common.refresh') }}
                         </button>
                     </div>
                 </div>
@@ -196,11 +196,12 @@
             <div class="col-lg-8">
                 <div class="card">
                     <div class="card-header">
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <h5 class="mb-0">
                                 <i class="fas fa-chart-line"></i> اتجاهات الجمع
                             </h5>
-                            <div class="btn-group btn-group-sm" role="group">
+                            <div class="d-flex gap-2 flex-wrap">
+                                <div class="btn-group btn-group-sm" role="group">
                                 <button class="btn btn-outline-primary active" onclick="changeChartPeriod('week')">أسبوع</button>
                                 <button class="btn btn-outline-primary" onclick="changeChartPeriod('month')">شهر</button>
                                 <button class="btn btn-outline-primary" onclick="changeChartPeriod('year')">سنة</button>
@@ -474,7 +475,7 @@
     justify-content: center;
     color: white;
     font-size: 1.2rem;
-    margin-left: 1rem;
+    margin-inline-start: 1rem;
 }
 
 .cost-details {
@@ -531,7 +532,7 @@
     }
     
     .cost-icon {
-        margin-left: 0;
+        margin-inline-start: 0;
         margin-bottom: 0.5rem;
     }
 }

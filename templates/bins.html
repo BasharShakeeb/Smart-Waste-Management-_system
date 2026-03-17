@@ -1,29 +1,35 @@
 {% extends "base.html" %}
 
-{% block title %}إدارة الحاويات - Collect Me IoT{% endblock %}
+{% block title %}{{ t('bins.title') }} - Collect Me IoT{% endblock %}
 
 {% block content %}
 <!-- Header -->
 <header class="main-header">
     <div class="header-content">
         <div class="logo-section">
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                <i class="bx bx-menu"></i>
+            </button>
             <i class="fas fa-recycle"></i>
             <h1>Collect Me IoT</h1>
         </div>
         <div class="header-actions">
-            <button class="btn btn-outline-light btn-sm" onclick="toggleLanguage()">
-                <i class="fas fa-globe"></i> العربية
-            </button>
+            <a href="/set-locale/{{ 'ar' if locale == 'en' else 'en' }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-globe"></i> {{ t('langSwitcher.switchTo') }}
+            </a>
             <div class="user-info">
                 <div class="user-avatar">{{ session.name[0] if session.name else 'A' }}</div>
-                <span>{{ session.name if session.name else 'المدير' }}</span>
-                <a href="{{ url_for('main.logout') }}" class="btn btn-outline-light btn-sm ms-2">
-                    <i class="fas fa-sign-out-alt"></i>
-                </a>
+                <span>{{ session.name if session.name else t('common.admin') }}</span>
             </div>
+            <a href="{{ url_for('main.logout') }}" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
         </div>
     </div>
 </header>
+
+<!-- Sidebar Overlay -->
+<div class="sidebar-overlay"></div>
 
 <!-- Sidebar -->
 <nav class="main-sidebar">
@@ -31,38 +37,44 @@
         <div class="nav-item">
             <a href="{{ url_for('main.dashboard') }}" class="nav-link">
                 <i class="fas fa-tachometer-alt"></i>
-                <span>لوحة التحكم</span>
+                <span>{{ t('nav.dashboard') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.bins_management') }}" class="nav-link active">
                 <i class="fas fa-trash-alt"></i>
-                <span>الحاويات</span>
+                <span>{{ t('nav.bins') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.live_map') }}" class="nav-link">
                 <i class="fas fa-map-marked-alt"></i>
-                <span>الخريطة الحية</span>
+                <span>{{ t('nav.liveMap') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.drivers_management') }}" class="nav-link">
                 <i class="fas fa-users"></i>
-                <span>السائقون</span>
+                <span>{{ t('nav.drivers') }}</span>
             </a>
         </div>
         <div class="nav-item">
             <a href="{{ url_for('main.create_task') }}" class="nav-link">
                 <i class="fas fa-tasks"></i>
-                <span>إنشاء مهمة</span>
+                <span>{{ t('nav.createTask') }}</span>
             </a>
         </div>
         <!-- Reports navigation removed -->
         <div class="nav-item">
             <a href="#" class="nav-link">
                 <i class="fas fa-cog"></i>
-                <span>الإعدادات</span>
+                <span>{{ t('nav.settings') }}</span>
+            </a>
+        </div>
+        <div class="nav-item mt-auto">
+            <a href="{{ url_for('main.logout') }}" class="nav-link nav-logout">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
             </a>
         </div>
     </div>
@@ -74,20 +86,20 @@
         <!-- Page Header -->
         <div class="row mb-4">
             <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
-                        <h2 class="mb-1">إدارة الحاويات</h2>
-                        <p class="text-muted mb-0">مراقبة وإدارة جميع حاويات النفايات</p>
+                        <h2 class="mb-1">{{ t('bins.management') }}</h2>
+                        <p class="text-muted mb-0">{{ t('bins.monitorAll') }}</p>
                     </div>
-                    <div>
+                    <div class="d-flex gap-2 flex-wrap align-items-center">
                         <button class="btn btn-success" onclick="showAddBinModal()">
-                            <i class="fas fa-plus"></i> إضافة حاوية
+                            <i class="fas fa-plus"></i> {{ t('bins.addBin') }}
                         </button>
                         <button class="btn btn-primary" onclick="refreshBins()">
-                            <i class="fas fa-sync-alt"></i> تحديث
+                            <i class="fas fa-sync-alt"></i> {{ t('common.refresh') }}
                         </button>
-                        <span class="badge bg-success ms-2" id="realtime-status">
-                            <i class="fas fa-wifi"></i> متصل مباشر
+                        <span class="badge bg-success" id="realtime-status">
+                            <i class="fas fa-wifi"></i> {{ t('bins.liveConnected') }}
                         </span>
                     </div>
                 </div>
@@ -101,34 +113,34 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-3">
-                                <label for="searchInput" class="form-label">البحث</label>
-                                <input type="text" class="form-control" id="searchInput" placeholder="ابحث عن حاوية أو موقع...">
+                                <label for="searchInput" class="form-label">{{ t('common.search') }}</label>
+                                <input type="text" class="form-control" id="searchInput" placeholder="{{ t('bins.searchPlaceholder') }}">
                             </div>
                             <div class="col-md-2">
-                                <label for="statusFilter" class="form-label">الحالة</label>
+                                <label for="statusFilter" class="form-label">{{ t('common.status') }}</label>
                                 <select class="form-select" id="statusFilter">
-                                    <option value="">جميع الحالات</option>
-                                    <option value="full">ممتلئ</option>
-                                    <option value="half">نصف ممتلئ</option>
-                                    <option value="empty">فارغ</option>
+                                    <option value="">{{ t('common.allStatuses') }}</option>
+                                    <option value="full">{{ t('common.full') }}</option>
+                                    <option value="half">{{ t('common.halfFull') }}</option>
+                                    <option value="empty">{{ t('common.empty') }}</option>
                                 </select>
                             </div>
                             <div class="col-md-2">
-                                <label for="fillLevelMin" class="form-label">أقل مستوى امتلاء</label>
+                                <label for="fillLevelMin" class="form-label">{{ t('bins.minFillLevel') }}</label>
                                 <input type="number" class="form-control" id="fillLevelMin" min="0" max="100" placeholder="0">
                             </div>
                             <div class="col-md-2">
-                                <label for="fillLevelMax" class="form-label">أعلى مستوى امتلاء</label>
+                                <label for="fillLevelMax" class="form-label">{{ t('bins.maxFillLevel') }}</label>
                                 <input type="number" class="form-control" id="fillLevelMax" min="0" max="100" placeholder="100">
                             </div>
                             <div class="col-md-2">
-                                <label for="locationFilter" class="form-label">الموقع</label>
+                                <label for="locationFilter" class="form-label">{{ t('common.location') }}</label>
                                 <select class="form-select" id="locationFilter">
-                                    <option value="">جميع المواقع</option>
-                                    <option value="main">الشارع الرئيسي</option>
-                                    <option value="park">المنتزه</option>
-                                    <option value="downtown">وسط المدينة</option>
-                                    <option value="shopping">مركز التسوق</option>
+                                    <option value="">{{ t('common.allLocations') }}</option>
+                                    <option value="main">{{ t('bins.locationMainStreet') }}</option>
+                                    <option value="park">{{ t('bins.locationPark') }}</option>
+                                    <option value="downtown">{{ t('bins.locationDowntown') }}</option>
+                                    <option value="shopping">{{ t('bins.locationShopping') }}</option>
                                 </select>
                             </div>
                             <div class="col-md-1 d-flex align-items-end">
@@ -150,7 +162,7 @@
                         <i class="fas fa-trash-alt"></i>
                     </div>
                     <div class="stats-number">{{ bins|length }}</div>
-                    <div class="stats-label">إجمالي الحاويات</div>
+                    <div class="stats-label">{{ t('bins.totalBins') }}</div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
@@ -159,7 +171,7 @@
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
                     <div class="stats-number">{{ bins|selectattr('fill_level', '>=', 80)|list|length }}</div>
-                    <div class="stats-label">حاويات ممتلئة</div>
+                    <div class="stats-label">{{ t('bins.fullBins') }}</div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
@@ -168,7 +180,7 @@
                         <i class="fas fa-exclamation-circle"></i>
                     </div>
                     <div class="stats-number">{{ bins|selectattr('fill_level', '>=', 40)|selectattr('fill_level', '<', 80)|list|length }}</div>
-                    <div class="stats-label">حاويات نصف ممتلئة</div>
+                    <div class="stats-label">{{ t('bins.halfFullBins') }}</div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
@@ -177,7 +189,7 @@
                         <i class="fas fa-check-circle"></i>
                     </div>
                     <div class="stats-number">{{ bins|selectattr('fill_level', '<', 40)|list|length }}</div>
-                    <div class="stats-label">حاويات فارغة</div>
+                    <div class="stats-label">{{ t('bins.emptyBins') }}</div>
                 </div>
             </div>
         </div>
@@ -187,16 +199,16 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <h5 class="mb-0">
-                                <i class="fas fa-list"></i> قائمة الحاويات
+                                <i class="fas fa-list"></i> {{ t('bins.binsList') }}
                             </h5>
-                            <div>
+                            <div class="d-flex gap-2 flex-wrap">
                                 <button class="btn btn-outline-primary btn-sm" onclick="exportBinsData()">
-                                    <i class="fas fa-download"></i> تصدير CSV
+                                    <i class="fas fa-download"></i> {{ t('bins.exportAllCSV') }}
                                 </button>
                                 <button class="btn btn-outline-success btn-sm" onclick="exportBinsPDF()">
-                                    <i class="fas fa-file-pdf"></i> تصدير PDF
+                                    <i class="fas fa-file-pdf"></i> {{ t('bins.exportAllPDF') }}
                                 </button>
                             </div>
                         </div>
@@ -209,17 +221,17 @@
                                         <th>
                                             <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
                                         </th>
-                                        <th>معرف الحاوية</th>
-                                        <th>الموقع</th>
-                                        <th>مستوى الامتلاء</th>
+                                        <th>{{ t('bins.binId') }}</th>
+                                        <th>{{ t('common.location') }}</th>
+                                        <th>{{ t('common.fillLevel') }}</th>
                                         <!--
                                         <th>درجة الحرارة</th>
                                         <th>زاوية الميل</th>
                                         -->
-                                        <th>مستوى البطارية</th>
-                                        <th>الحالة</th>
-                                        <th>آخر جمع</th>
-                                        <th>الإجراءات</th>
+                                        <th>{{ t('common.batteryLevel') }}</th>
+                                        <th>{{ t('common.status') }}</th>
+                                        <th>{{ t('bins.lastCollected') }}</th>
+                                        <th>{{ t('common.actions') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody id="bins-table">
@@ -288,23 +300,23 @@
                                                     <small class="text-muted">{{ bin.last_collected.strftime('%H:%M') }}</small>
                                                 </div>
                                             {% else %}
-                                                <span class="text-muted">لم يتم الجمع</span>
+                                                <span class="text-muted">{{ t('common.notCollected') }}</span>
                                             {% endif %}
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <button class="btn btn-outline-primary btn-sm" onclick="viewBinDetails('{{ bin.id }}')" title="عرض التفاصيل">
+                                                <button class="btn btn-outline-primary btn-sm" onclick="viewBinDetails('{{ bin.id }}')" title="{{ t('common.viewDetails') }}">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
-                                                <button class="btn btn-outline-warning btn-sm" onclick="editBin('{{ bin.id }}')" title="تعديل">
+                                                <button class="btn btn-outline-warning btn-sm" onclick="editBin('{{ bin.id }}')" title="{{ t('common.edit') }}">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                                 {% if bin.fill_level >= 80 %}
-                                                <button class="btn btn-outline-success btn-sm" onclick="createTaskForBin('{{ bin.id }}')" title="إنشاء مهمة">
+                                                <button class="btn btn-outline-success btn-sm" onclick="createTaskForBin('{{ bin.id }}')" title="{{ t('nav.createTask') }}">
                                                     <i class="fas fa-tasks"></i>
                                                 </button>
                                                 {% endif %}
-                                                <button class="btn btn-outline-danger btn-sm" onclick="deleteBin('{{ bin.id }}')" title="حذف">
+                                                <button class="btn btn-outline-danger btn-sm" onclick="deleteBin('{{ bin.id }}')" title="{{ t('common.delete') }}">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </div>
@@ -324,16 +336,16 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <div>
-                                <span id="selectedCount">0</span> حاوية محددة
+                                <span id="selectedCount">0</span> {{ t('common.binSelected') }}
                             </div>
-                            <div>
+                            <div class="d-flex gap-2 flex-wrap">
                                 <button class="btn btn-success" onclick="createBulkTask()" disabled id="bulkTaskBtn">
-                                    <i class="fas fa-tasks"></i> إنشاء مهمة للحاويات المحددة
+                                    <i class="fas fa-tasks"></i> {{ t('bins.createTaskForSelected') }}
                                 </button>
                                 <button class="btn btn-warning" onclick="exportSelectedBins()" disabled id="bulkExportBtn">
-                                    <i class="fas fa-download"></i> تصدير المحدد
+                                    <i class="fas fa-download"></i> {{ t('bins.exportSelectedBins') }}
                                 </button>
                             </div>
                         </div>
@@ -349,7 +361,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">إضافة حاوية جديدة</h5>
+                <h5 class="modal-title">{{ t('bins.addNewBin') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -357,13 +369,13 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="binId" class="form-label">معرف الحاوية</label>
+                                <label for="binId" class="form-label">{{ t('bins.binId') }}</label>
                                 <input type="text" class="form-control" id="binId" name="bin_id" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="binLocation" class="form-label">الموقع</label>
+                                <label for="binLocation" class="form-label">{{ t('bins.binLocation') }}</label>
                                 <input type="text" class="form-control" id="binLocation" name="location" required>
                             </div>
                         </div>
@@ -371,13 +383,13 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="binLatitude" class="form-label">خط العرض</label>
+                                <label for="binLatitude" class="form-label">{{ t('bins.latitude') }}</label>
                                 <input type="number" step="any" class="form-control" id="binLatitude" name="latitude">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="binLongitude" class="form-label">خط الطول</label>
+                                <label for="binLongitude" class="form-label">{{ t('bins.longitude') }}</label>
                                 <input type="number" step="any" class="form-control" id="binLongitude" name="longitude">
                             </div>
                         </div>
@@ -385,18 +397,27 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="binCapacity" class="form-label">السعة (لتر)</label>
+                                <label for="binCapacity" class="form-label">{{ t('bins.capacity') }}</label>
                                 <input type="number" class="form-control" id="binCapacity" name="capacity">
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">الحالة
-                                <label for="binType" class="form-label">نوع الحاوية</label>
+                            <div class="mb-3">
+                                <label for="binContainerHeight" class="form-label">{{ t('bins.containerHeight') }}</label>
+                                <input type="number" class="form-control" id="binContainerHeight"
+                                       name="container_height" min="1" placeholder="100">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="binType" class="form-label">{{ t('bins.binType') }}</label>
                                 <select class="form-select" id="binType" name="type">
-                                    <option value="general">عامة</option>
-                                    <option value="recyclable">قابلة لإعادة التدوير</option>
-                                    <option value="organic">عضوية</option>
-                                    <option value="hazardous">خطرة</option>
+                                    <option value="general">{{ t('bins.typeGeneral') }}</option>
+                                    <option value="recyclable">{{ t('bins.typeRecyclable') }}</option>
+                                    <option value="organic">{{ t('bins.typeOrganic') }}</option>
+                                    <option value="hazardous">{{ t('bins.typeHazardous') }}</option>
                                 </select>
                             </div>
                         </div>
@@ -404,8 +425,8 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-primary" onclick="submitAddBin()">إضافة</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('common.cancel') }}</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddBin()">{{ t('common.add') }}</button>
             </div>
         </div>
     </div>
@@ -416,15 +437,15 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">تفاصيل الحاوية</h5>
+                <h5 class="modal-title">{{ t('bins.binDetails') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="binDetailsContent">
                 <!-- Content will be loaded dynamically -->
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                <button type="button" class="btn btn-primary" onclick="editBinFromDetails()">تعديل</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('common.close') }}</button>
+                <button type="button" class="btn btn-primary" onclick="editBinFromDetails()">{{ t('common.edit') }}</button>
             </div>
         </div>
     </div>
@@ -435,7 +456,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">تعديل الحاوية</h5>
+                <h5 class="modal-title">{{ t('bins.editBin') }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -444,31 +465,31 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editBinIdentifier" class="form-label">معرف الحاوية</label>
+                                <label for="editBinIdentifier" class="form-label">{{ t('bins.binId') }}</label>
                                 <input type="text" class="form-control" id="editBinIdentifier" name="bin_id" readonly>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editBinLocation" class="form-label">الموقع</label>
+                                <label for="editBinLocation" class="form-label">{{ t('bins.binLocation') }}</label>
                                 <input type="text" class="form-control" id="editBinLocation" name="location" required>
                             </div>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="editBinAddress" class="form-label">العنوان المفصل</label>
+                        <label for="editBinAddress" class="form-label">{{ t('bins.addressDetailed') }}</label>
                         <input type="text" class="form-control" id="editBinAddress" name="address">
                     </div>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editBinLatitude" class="form-label">خط العرض</label>
+                                <label for="editBinLatitude" class="form-label">{{ t('bins.latitude') }}</label>
                                 <input type="number" step="any" class="form-control" id="editBinLatitude" name="latitude">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editBinLongitude" class="form-label">خط الطول</label>
+                                <label for="editBinLongitude" class="form-label">{{ t('bins.longitude') }}</label>
                                 <input type="number" step="any" class="form-control" id="editBinLongitude" name="longitude">
                             </div>
                         </div>
@@ -476,40 +497,40 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editBinCapacity" class="form-label">السعة (لتر)</label>
+                                <label for="editBinCapacity" class="form-label">{{ t('bins.capacity') }}</label>
                                 <input type="number" class="form-control" id="editBinCapacity" name="capacity">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="editBinType" class="form-label">نوع الحاوية</label>
+                                <label for="editBinType" class="form-label">{{ t('bins.binType') }}</label>
                                 <select class="form-select" id="editBinType" name="bin_type">
-                                    <option value="general">عامة</option>
-                                    <option value="recyclable">قابلة لإعادة التدوير</option>
-                                    <option value="organic">عضوية</option>
-                                    <option value="hazardous">خطرة</option>
+                                    <option value="general">{{ t('bins.typeGeneral') }}</option>
+                                    <option value="recyclable">{{ t('bins.typeRecyclable') }}</option>
+                                    <option value="organic">{{ t('bins.typeOrganic') }}</option>
+                                    <option value="hazardous">{{ t('bins.typeHazardous') }}</option>
                                 </select>
                             </div>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="editBinStatus" class="form-label">الحالة</label>
+                        <label for="editBinStatus" class="form-label">{{ t('common.status') }}</label>
                         <select class="form-select" id="editBinStatus" name="status">
-                            <option value="active">نشطة</option>
-                            <option value="inactive">غير نشطة</option>
-                            <option value="maintenance">صيانة</option>
-                            <option value="error">خطأ</option>
+                            <option value="active">{{ t('bins.statusActive') }}</option>
+                            <option value="inactive">{{ t('bins.statusInactive') }}</option>
+                            <option value="maintenance">{{ t('bins.statusMaintenance') }}</option>
+                            <option value="error">{{ t('bins.statusError') }}</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="editBinNotes" class="form-label">ملاحظات</label>
+                        <label for="editBinNotes" class="form-label">{{ t('common.notes') }}</label>
                         <textarea class="form-control" id="editBinNotes" name="notes" rows="3"></textarea>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-primary" onclick="submitEditBin()">حفظ التغييرات</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('common.cancel') }}</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditBin()">{{ t('common.save') }}</button>
             </div>
         </div>
     </div>
@@ -578,7 +599,7 @@ function submitAddBin() {
     for (let [key, value] of formData.entries()) {
         if (value !== '') {
             // Convert numeric fields
-            if (['latitude', 'longitude', 'capacity', 'fill_level', 'temperature', 'battery_level'].includes(key)) {
+            if (['latitude', 'longitude', 'capacity', 'container_height', 'fill_level', 'temperature', 'battery_level'].includes(key)) {
                 data[key] = parseFloat(value) || 0;
             } else {
                 data[key] = value;
@@ -588,7 +609,7 @@ function submitAddBin() {
     
     // Validate required fields
     if (!data.bin_id || !data.location) {
-        showNotification('يرجى ملء جميع الحقول المطلوبة', 'error');
+        showNotification('{{ t("bins.requiredFields") }}', 'error');
         return;
     }
     
@@ -608,12 +629,12 @@ function submitAddBin() {
             modal.hide();
             refreshBins();
         } else {
-            showNotification(data.error || 'حدث خطأ في إضافة الحاوية', 'error');
+            showNotification(data.error || '{{ t("bins.addError") }}', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showNotification('حدث خطأ في الاتصال', 'error');
+        showNotification('{{ t("common.connectionError") }}', 'error');
     });
 }
 
@@ -627,35 +648,35 @@ function viewBinDetails(binId) {
                 document.getElementById('binDetailsContent').innerHTML = `
                     <div class="row">
                         <div class="col-md-6">
-                            <h6>معلومات الحاوية</h6>
-                            <p><strong>معرف الحاوية:</strong> ${bin.bin_id}</p>
-                            <p><strong>الموقع:</strong> ${bin.location}</p>
-                            <p><strong>العنوان:</strong> ${bin.address || 'غير محدد'}</p>
-                            <p><strong>مستوى الامتلاء:</strong> ${bin.fill_level}%</p>
+                            <h6>{{ t('bins.binInfo') }}</h6>
+                            <p><strong>{{ t('bins.binId') }}:</strong> ${bin.bin_id}</p>
+                            <p><strong>{{ t('common.location') }}:</strong> ${bin.location}</p>
+                            <p><strong>{{ t('bins.address') }}:</strong> ${bin.address || '{{ t("common.notSpecified") }}'}</p>
+                            <p><strong>{{ t('common.fillLevel') }}:</strong> ${bin.fill_level}%</p>
                             
                         </div>
                         <div class="col-md-6">
-                            <h6>حالة النظام</h6>
-                            <p><strong>السعة:</strong> ${bin.capacity} لتر</p>
-                            <p><strong>نوع الحاوية:</strong> ${getBinTypeText(bin.bin_type)}</p>
-                            <p><strong>مستوى البطارية:</strong> ${bin.battery_level}%</p>
-                            <p><strong>الحالة:</strong> ${getStatusText(bin.status)}</p>
-                            <p><strong>آخر جمع:</strong> ${bin.last_collected ? new Date(bin.last_collected).toLocaleString('ar-SA') : 'لم يتم الجمع'}</p>
-                            <p><strong>تاريخ التركيب:</strong> ${new Date(bin.installation_date).toLocaleDateString('ar-SA')}</p>
+                            <h6>{{ t('bins.systemStatus') }}</h6>
+                            <p><strong>{{ t('bins.capacity') }}:</strong> ${bin.capacity}</p>
+                            <p><strong>{{ t('bins.binType') }}:</strong> ${getBinTypeText(bin.bin_type)}</p>
+                            <p><strong>{{ t('common.batteryLevel') }}:</strong> ${bin.battery_level}%</p>
+                            <p><strong>{{ t('common.status') }}:</strong> ${getStatusText(bin.status)}</p>
+                            <p><strong>{{ t('bins.lastCollected') }}:</strong> ${bin.last_collected ? new Date(bin.last_collected).toLocaleString('ar-SA') : '{{ t("common.notCollected") }}'}</p>
+                            <p><strong>{{ t('bins.installationDate') }}:</strong> ${new Date(bin.installation_date).toLocaleDateString('ar-SA')}</p>
                         </div>
                     </div>
-                    ${bin.notes ? `<div class="mt-3"><strong>ملاحظات:</strong><br>${bin.notes}</div>` : ''}
+                    ${bin.notes ? `<div class="mt-3"><strong>{{ t('common.notes') }}:</strong><br>${bin.notes}</div>` : ''}
                 `;
                 
                 const modal = new bootstrap.Modal(document.getElementById('binDetailsModal'));
                 modal.show();
             } else {
-                showNotification(data.error || 'حدث خطأ في تحميل تفاصيل الحاوية', 'error');
+                showNotification(data.error || '{{ t("bins.loadError") }}', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showNotification('حدث خطأ في الاتصال', 'error');
+            showNotification('{{ t("common.connectionError") }}', 'error');
         });
 }
 
@@ -681,12 +702,12 @@ function editBin(binId) {
                 const modal = new bootstrap.Modal(document.getElementById('editBinModal'));
                 modal.show();
             } else {
-                showNotification(data.error || 'حدث خطأ في تحميل بيانات الحاوية', 'error');
+                showNotification(data.error || '{{ t("bins.loadError") }}', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showNotification('حدث خطأ في الاتصال', 'error');
+            showNotification('{{ t("common.connectionError") }}', 'error');
         });
 }
 
@@ -724,12 +745,12 @@ function submitEditBin() {
             modal.hide();
             refreshBins();
         } else {
-            showNotification(data.error || 'حدث خطأ في تحديث الحاوية', 'error');
+            showNotification(data.error || '{{ t("bins.updateError") }}', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showNotification('حدث خطأ في الاتصال', 'error');
+        showNotification('{{ t("common.connectionError") }}', 'error');
     });
 }
 
@@ -738,7 +759,7 @@ function createTaskForBin(binId) {
 }
 
 function deleteBin(binId) {
-    if (confirm('هل أنت متأكد من حذف هذه الحاوية؟ هذا الإجراء لا يمكن التراجع عنه.')) {
+    if (confirm('{{ t("bins.confirmDeleteBin") }}')) {
         fetch(`/api/bins/${binId}`, {
             method: 'DELETE'
         })
@@ -748,12 +769,12 @@ function deleteBin(binId) {
                 showNotification(data.message, 'success');
                 refreshBins();
             } else {
-                showNotification(data.error || 'حدث خطأ في حذف الحاوية', 'error');
+                showNotification(data.error || '{{ t("bins.deleteError") }}', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showNotification('حدث خطأ في الاتصال', 'error');
+            showNotification('{{ t("common.connectionError") }}', 'error');
         });
     }
 }
@@ -761,20 +782,20 @@ function deleteBin(binId) {
 // Helper functions
 function getBinTypeText(type) {
     const types = {
-        'general': 'عامة',
-        'recyclable': 'قابلة لإعادة التدوير',
-        'organic': 'عضوية',
-        'hazardous': 'خطرة'
+        'general': '{{ t("bins.typeGeneral") }}',
+        'recyclable': '{{ t("bins.typeRecyclable") }}',
+        'organic': '{{ t("bins.typeOrganic") }}',
+        'hazardous': '{{ t("bins.typeHazardous") }}'
     };
     return types[type] || type;
 }
 
 function getStatusText(status) {
     const statuses = {
-        'active': 'نشطة',
-        'inactive': 'غير نشطة',
-        'maintenance': 'صيانة',
-        'error': 'خطأ'
+        'active': '{{ t("bins.statusActive") }}',
+        'inactive': '{{ t("bins.statusInactive") }}',
+        'maintenance': '{{ t("bins.statusMaintenance") }}',
+        'error': '{{ t("bins.statusError") }}'
     };
     return statuses[status] || status;
 }
@@ -831,7 +852,7 @@ function createBulkTask() {
     const binIds = Array.from(selectedCheckboxes).map(cb => cb.value);
     
     if (binIds.length === 0) {
-        alert('يرجى اختيار حاوية واحدة على الأقل');
+        alert('{{ t("bins.selectAtLeastOne") }}');
         return;
     }
     
@@ -843,17 +864,17 @@ function exportSelectedBins() {
     const binIds = Array.from(selectedCheckboxes).map(cb => cb.value);
     
     console.log('Exporting selected bins:', binIds);
-    alert('سيتم تصدير الحاويات المحددة');
+    alert('{{ t("bins.exportSelectedBins") }}');
 }
 
 function exportBinsData() {
     console.log('Exporting all bins data to CSV');
-    alert('سيتم تصدير جميع بيانات الحاويات');
+    alert('{{ t("bins.exportAllCSV") }}');
 }
 
 function exportBinsPDF() {
     console.log('Exporting bins data to PDF');
-    alert('سيتم تصدير بيانات الحاويات إلى PDF');
+    alert('{{ t("bins.exportAllPDF") }}');
 }
 
 function clearFilters() {

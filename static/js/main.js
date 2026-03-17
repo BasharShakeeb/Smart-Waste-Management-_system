@@ -3,6 +3,11 @@
 // Global socket connection
 let socket;
 
+// Translation helper – reads from window.__T__ (loaded from /api/translations)
+function _t(key) {
+    return (window.__T__ && window.__T__[key]) || key;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Socket.IO connection
     initializeSocket();
@@ -22,19 +27,59 @@ document.addEventListener('DOMContentLoaded', function() {
     // Mobile sidebar toggle
     const sidebarToggle = document.getElementById('sidebarToggle');
     const sidebar = document.querySelector('.main-sidebar');
-    
+    const overlay = document.querySelector('.sidebar-overlay');
+
+    function closeSidebar() {
+        if (!sidebar) return;
+        sidebar.classList.remove('show');
+        if (overlay) overlay.classList.remove('active');
+    }
+
+    function openSidebar() {
+        if (!sidebar) return;
+        sidebar.classList.add('show');
+        if (overlay) overlay.classList.add('active');
+    }
+
     if (sidebarToggle && sidebar) {
-        sidebarToggle.addEventListener('click', function() {
-            sidebar.classList.toggle('show');
+        sidebarToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const isMobile = window.innerWidth <= 991;
+
+            if (isMobile) {
+                // Mobile/tablet: toggle .show + overlay
+                if (sidebar.classList.contains('show')) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+            } else {
+                // Desktop: collapse/expand via body class
+                document.body.classList.toggle('sidebar-collapsed');
+            }
         });
+    }
+
+    // Close sidebar when overlay is clicked (mobile)
+    if (overlay) {
+        overlay.addEventListener('click', closeSidebar);
     }
 
     // Close sidebar when clicking outside on mobile
     document.addEventListener('click', function(e) {
-        if (window.innerWidth <= 768) {
-            if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
-                sidebar.classList.remove('show');
+        if (window.innerWidth <= 991 && sidebar && sidebar.classList.contains('show')) {
+            if (!sidebar.contains(e.target) && sidebarToggle && !sidebarToggle.contains(e.target)) {
+                closeSidebar();
             }
+        }
+    });
+
+    // On window resize, clean up stale states
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 991) {
+            // Remove mobile .show when switching to desktop
+            sidebar && sidebar.classList.remove('show');
+            overlay && overlay.classList.remove('active');
         }
     });
 
@@ -51,12 +96,12 @@ function initializeSocket() {
     
     socket.on('connect', function() {
         console.log('Connected to server');
-        showNotification('تم الاتصال بالخادم', 'success');
+        showNotification(_t('connectedToServer'), 'success');
     });
     
     socket.on('disconnect', function() {
         console.log('Disconnected from server');
-        showNotification('انقطع الاتصال عن الخادم', 'warning');
+        showNotification(_t('disconnectedFromServer'), 'warning');
     });
     
     // Real-time bin updates
@@ -77,7 +122,7 @@ function initializeSocket() {
     // Error handling
     socket.on('error', function(error) {
         console.error('Socket error:', error);
-        showNotification('خطأ في الاتصال', 'error');
+        showNotification(_t('connectionError'), 'error');
     });
 }
 
@@ -137,7 +182,7 @@ function updateBinStatusInUI(data) {
         // Add pulse animation for critical bins
         if (data.status === 'critical') {
             binElement.classList.add('critical-bin');
-            showNotification(`تحذير: الحاوية ${data.bin_id} ممتلئة تماماً!`, 'warning');
+            showNotification(_t('binFullWarning').replace('{binId}', data.bin_id), 'warning');
         } else {
             binElement.classList.remove('critical-bin');
         }
@@ -173,7 +218,7 @@ function updateDashboardStats(data) {
     // Update timestamp
     const timestampElement = document.getElementById('last-update');
     if (timestampElement) {
-        timestampElement.textContent = `آخر تحديث: ${data.timestamp}`;
+        timestampElement.textContent = `${_t('lastUpdate') || 'Last update'}: ${data.timestamp}`;
     }
 }
 
@@ -206,7 +251,7 @@ function createBinTableRow(bin) {
                 </div>
             </div>
         </td>
-        <td>${bin.temperature ? bin.temperature + '°م' : 'غير متاح'}</td>
+        <td>${bin.temperature ? bin.temperature + '°C' : _t('temperatureNA')}</td>
         <td>
             <span class="badge ${getStatusBadgeClass(bin.status)}">
                 ${getStatusText(bin.status)}
@@ -245,10 +290,10 @@ function getStatusBadgeClass(status) {
 
 function getStatusText(status) {
     switch (status) {
-        case 'critical': return 'حرجة';
-        case 'warning': return 'تحذير';
-        case 'normal': return 'عادية';
-        default: return 'غير محدد';
+        case 'critical': return _t('statusCritical');
+        case 'warning': return _t('statusWarning');
+        case 'normal': return _t('statusNormal');
+        default: return _t('notSpecified');
     }
 }
 
@@ -348,9 +393,9 @@ function initializeCharts() {
         new Chart(collectionTrendCtx, {
             type: 'line',
             data: {
-                labels: ['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'],
+                labels: [_t('dayMon'), _t('dayTue'), _t('dayWed'), _t('dayThu'), _t('dayFri'), _t('daySat'), _t('daySun')],
                 datasets: [{
-                    label: 'عدد الحاويات المجمعة',
+                    label: _t('binsCollected'),
                     data: [12, 19, 3, 5, 2, 3, 8],
                     borderColor: '#3498db',
                     backgroundColor: 'rgba(52, 152, 219, 0.1)',
@@ -380,9 +425,9 @@ function initializeCharts() {
         new Chart(routeEfficiencyCtx, {
             type: 'bar',
             data: {
-                labels: ['المسار 1', 'المسار 2', 'المسار 3', 'المسار 4', 'المسار 5'],
+                labels: [_t('route1'), _t('route2'), _t('route3'), _t('route4'), _t('route5')],
                 datasets: [{
-                    label: 'كفاءة المسار (%)',
+                    label: _t('routeEfficiency'),
                     data: [85, 92, 78, 88, 95],
                     backgroundColor: [
                         'rgba(52, 152, 219, 0.8)',
@@ -422,7 +467,7 @@ function initializeCharts() {
 // Bin management functions
 function createTask(binIds) {
     if (!binIds || binIds.length === 0) {
-        alert('يرجى اختيار حاوية واحدة على الأقل');
+        alert(_t('selectAtLeastOneBin'));
         return;
     }
 
@@ -452,12 +497,12 @@ function updateBinStatus(binId, status) {
         if (data.success) {
             location.reload();
         } else {
-            alert('حدث خطأ في تحديث حالة الحاوية');
+            alert(_t('binStatusUpdateError'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('حدث خطأ في تحديث حالة الحاوية');
+        alert(_t('binStatusUpdateError'));
     });
 }
 
@@ -474,12 +519,12 @@ function startTask(taskId) {
         if (data.success) {
             location.reload();
         } else {
-            alert('حدث خطأ في بدء المهمة');
+            alert(_t('taskStartError'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('حدث خطأ في بدء المهمة');
+        alert(_t('taskStartError'));
     });
 }
 
@@ -495,17 +540,17 @@ function markBinCollected(taskId, binId) {
         if (data.success) {
             location.reload();
         } else {
-            alert('حدث خطأ في تسجيل جمع الحاوية');
+            alert(_t('binCollectError'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('حدث خطأ في تسجيل جمع الحاوية');
+        alert(_t('binCollectError'));
     });
 }
 
 function completeTask(taskId) {
-    if (confirm('هل أنت متأكد من إنهاء المهمة؟')) {
+    if (confirm(_t('confirmCompleteTask'))) {
         fetch(`/api/tasks/${taskId}/complete`, {
             method: 'POST',
             headers: {
@@ -517,13 +562,13 @@ function completeTask(taskId) {
             if (data.success) {
                 location.reload();
             } else {
-                alert('حدث خطأ في إنهاء المهمة');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('حدث خطأ في إنهاء المهمة');
-        });
+            alert(_t('taskCompleteError'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert(_t('taskCompleteError'));
+    });
     }
 }
 
@@ -550,7 +595,8 @@ function showRouteOnMap(routeId) {
 // Utility functions
 function formatDate(dateString) {
     const date = new Date(dateString);
-    return date.toLocaleDateString('ar-SA', {
+    const loc = window.__LOCALE__ === 'ar' ? 'ar-SA' : 'en-US';
+    return date.toLocaleDateString(loc, {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -561,7 +607,8 @@ function formatDate(dateString) {
 
 function formatTime(dateString) {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('ar-SA', {
+    const loc = window.__LOCALE__ === 'ar' ? 'ar-SA' : 'en-US';
+    return date.toLocaleTimeString(loc, {
         hour: '2-digit',
         minute: '2-digit'
     });

@@ -2,8 +2,48 @@ __pycache__/
 *.py[cod]
 *$py.class
 .venv/
-inctance/
 instance/
 .env
 .DS_Store
 *.log
+# Environment variables
+.env
+.env.*
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment (uv uses .venv)
+.venv/
+venv/
+env/
+
+# Database
+*.db
+*.sqlite3
+
+# Flask
+instance/
+
+# Logs
+*.log
+
+# Uploads
+uploads/
+static/uploads/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build / cache
+dist/
+build/
+.cache
+.pytest_cache/

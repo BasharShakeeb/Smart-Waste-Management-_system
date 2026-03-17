@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}الخريطة المباشرة - Collect Me IoT{% endblock %}
+{% block title %}{{ t('liveMap.title') }} - Collect Me IoT{% endblock %}
 
 {% block extra_css %}
 <!-- Leaflet CSS -->
@@ -48,7 +48,7 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    margin-right: 5px;
+    margin-inline-end: 5px;
 }
 
 .status-online { background-color: #28a745; }
@@ -106,27 +106,27 @@
                 <ul class="nav flex-column">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.dashboard') }}">
-                            <i class="fas fa-tachometer-alt"></i> لوحة التحكم
+                            <i class="fas fa-tachometer-alt"></i> {{ t('nav.dashboard') }}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.bins_management') }}">
-                            <i class="fas fa-trash-alt"></i> إدارة الحاويات
+                            <i class="fas fa-trash-alt"></i> {{ t('nav.binsManagement') }}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="{{ url_for('main.live_map') }}" class="nav-link active">
-                            <i class="fas fa-map-marked-alt"></i> الخريطة المباشرة
+                            <i class="fas fa-map-marked-alt"></i> {{ t('nav.liveMapAlt') }}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.drivers_management') }}">
-                            <i class="fas fa-users"></i> إدارة السائقين
+                            <i class="fas fa-users"></i> {{ t('nav.driversManagement') }}
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.create_task') }}">
-                            <i class="fas fa-plus-circle"></i> إنشاء مهمة
+                            <i class="fas fa-plus-circle"></i> {{ t('nav.createTask') }}
                         </a>
                     </li>
                     <!-- Reports navigation removed -->
@@ -136,21 +136,21 @@
 
         <!-- Main content -->
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">الخريطة المباشرة</h1>
-                <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom gap-2">
+                <h1 class="h2">{{ t('liveMap.heading') }}</h1>
+                <div class="btn-toolbar mb-2 mb-md-0 d-flex gap-2 flex-wrap">
                     <div class="btn-group me-2">
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshMap()">
-                            <i class="fas fa-sync-alt"></i> تحديث
+                            <i class="fas fa-sync-alt"></i> {{ t('common.refresh') }}
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleFullscreen()">
-                            <i class="fas fa-expand"></i> ملء الشاشة
+                            <i class="fas fa-expand"></i> {{ t('liveMap.fullscreen') }}
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="showRoutePanel()">
-                            <i class="fas fa-route"></i> إنشاء مسار
+                            <i class="fas fa-route"></i> {{ t('liveMap.createRoute') }}
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-success" onclick="optimizeRoute()">
-                            <i class="fas fa-magic"></i> تحسين المسار
+                            <i class="fas fa-magic"></i> {{ t('liveMap.optimizeRoute') }}
                         </button>
                     </div>
                 </div>
@@ -163,70 +163,70 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-3">
-                                    <h6>مرشحات العرض</h6>
+                                    <h6>{{ t('liveMap.displayFilters') }}</h6>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="showBins" checked onchange="toggleBins()">
                                         <label class="form-check-label" for="showBins">
-                                            عرض الحاويات
+                                            {{ t('liveMap.showBins') }}
                                         </label>
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="showDrivers" checked onchange="toggleDrivers()">
                                         <label class="form-check-label" for="showDrivers">
-                                            عرض السائقين
+                                            {{ t('liveMap.showDrivers') }}
                                         </label>
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="showRoutes" onchange="toggleRoutes()">
                                         <label class="form-check-label" for="showRoutes">
-                                            عرض المسارات
+                                            {{ t('liveMap.showRoutes') }}
                                         </label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
-                                    <h6>حالة الحاويات</h6>
+                                    <h6>{{ t('liveMap.binStatus') }}</h6>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="showFull" checked onchange="filterBins()">
                                         <label class="form-check-label" for="showFull">
-                                            ممتلئة (≥80%)
+                                            {{ t('liveMap.fullBins') }}
                                         </label>
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="showHalfFull" checked onchange="filterBins()">
                                         <label class="form-check-label" for="showHalfFull">
-                                            نصف ممتلئة (50-79%)
+                                            {{ t('liveMap.halfFullBins') }}
                                         </label>
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="showEmpty" checked onchange="filterBins()">
                                         <label class="form-check-label" for="showEmpty">
-                                            فارغة (<50%)
+                                            {{ t('liveMap.emptyBins') }}
                                         </label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
-                                    <h6>إعدادات المسار</h6>
+                                    <h6>{{ t('liveMap.routeSettings') }}</h6>
                                     <div class="form-group mb-2">
-                                        <label for="routeType" class="form-label small">نوع المسار:</label>
+                                        <label for="routeType" class="form-label small">{{ t('liveMap.routeType') }}:</label>
                                         <select class="form-select form-select-sm" id="routeType" onchange="updateRouteType()">
-                                            <option value="driving">القيادة</option>
-                                            <option value="walking">المشي</option>
-                                            <option value="cycling">الدراجة</option>
+                                            <option value="driving">{{ t('liveMap.routeDriving') }}</option>
+                                            <option value="walking">{{ t('liveMap.routeWalking') }}</option>
+                                            <option value="cycling">{{ t('liveMap.routeCycling') }}</option>
                                         </select>
                                     </div>
                                     <button class="btn btn-sm btn-outline-warning" onclick="clearRoutes()">
-                                        <i class="fas fa-eraser"></i> مسح المسارات
+                                        <i class="fas fa-eraser"></i> {{ t('liveMap.clearRoutes') }}
                                     </button>
                                 </div>
                                 <div class="col-md-3">
-                                    <h6>الإحصائيات السريعة</h6>
+                                    <h6>{{ t('liveMap.quickStats') }}</h6>
                                     <small class="text-muted">
-                                        إجمالي الحاويات: <strong id="totalBins">{{ bins|length }}</strong><br>
-                                        الحاويات الممتلئة: <strong id="fullBins">{{ bins|selectattr('is_full')|list|length }}</strong><br>
-                                        السائقين المتصلين: <strong id="onlineDrivers">{{ drivers|selectattr('status', 'equalto', 'online')|list|length }}</strong><br>
+                                        {{ t('liveMap.totalBins') }}: <strong id="totalBins">{{ bins|length }}</strong><br>
+                                        {{ t('liveMap.fullBinsCount') }}: <strong id="fullBins">{{ bins|selectattr('is_full')|list|length }}</strong><br>
+                                        {{ t('liveMap.onlineDriversCount') }}: <strong id="onlineDrivers">{{ drivers|selectattr('status', 'equalto', 'online')|list|length }}</strong><br>
                                         <span id="routeStats" style="display: none;">
-                                            المسافة: <strong id="routeDistance">-</strong><br>
-                                            الوقت المقدر: <strong id="routeTime">-</strong>
+                                            {{ t('liveMap.distance') }}: <strong id="routeDistance">-</strong><br>
+                                            {{ t('liveMap.estimatedTime') }}: <strong id="routeTime">-</strong>
                                         </span>
                                     </small>
                                 </div>
@@ -252,35 +252,37 @@
                 <div class="col-md-12">
                     <div class="card">
                         <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="fas fa-route"></i> تخطيط المسار
-                                <button class="btn btn-sm btn-outline-secondary float-end" onclick="hideRoutePanel()">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-route"></i> {{ t('liveMap.routePlanning') }}
+                                </h6>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="hideRoutePanel()">
                                     <i class="fas fa-times"></i>
                                 </button>
-                            </h6>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6">
-                                    <h6>الحاويات المحددة للمسار:</h6>
+                                    <h6>{{ t('liveMap.selectedBinsForRoute') }}:</h6>
                                     <div id="selectedBinsForRoute" class="mb-3">
-                                        <p class="text-muted">انقر على الحاويات في الخريطة لإضافتها للمسار</p>
+                                        <p class="text-muted">{{ t('liveMap.clickBinsToAdd') }}</p>
                                     </div>
-                                    <div class="btn-group">
+                                    <div class="d-flex gap-2 flex-wrap">
                                         <button class="btn btn-success btn-sm" onclick="calculateRoute()">
-                                            <i class="fas fa-route"></i> حساب المسار
+                                            <i class="fas fa-route"></i> {{ t('liveMap.calculateRoute') }}
                                         </button>
                                         <button class="btn btn-warning btn-sm" onclick="optimizeSelectedRoute()">
-                                            <i class="fas fa-magic"></i> تحسين المسار
+                                            <i class="fas fa-magic"></i> {{ t('liveMap.optimizeSelected') }}
                                         </button>
                                         <button class="btn btn-danger btn-sm" onclick="clearSelectedBins()">
-                                            <i class="fas fa-trash"></i> مسح الاختيار
+                                            <i class="fas fa-trash"></i> {{ t('liveMap.clearSelected') }}
                                         </button>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div id="routeInstructions">
-                                        <h6>تعليمات المسار:</h6>
+                                        <h6>{{ t('liveMap.routeInstructions') }}:</h6>
                                         <div id="routeDirections" class="route-info" style="display: none;">
                                             <!-- Route directions will be displayed here -->
                                         </div>
@@ -297,38 +299,38 @@
                 <div class="col-md-12">
                     <div class="card">
                         <div class="card-header">
-                            <h6 class="mb-0">دليل الرموز</h6>
+                            <h6 class="mb-0">{{ t('liveMap.symbolGuide') }}</h6>
                         </div>
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6">
-                                    <h6>الحاويات:</h6>
+                                    <h6>{{ t('liveMap.binsLegend') }}:</h6>
                                     <div class="d-flex align-items-center mb-2">
                                         <div class="badge bg-danger me-2">●</div>
-                                        <span>ممتلئة (≥80%) - تحتاج جمع فوري</span>
+                                        <span>{{ t('liveMap.fullNeedCollection') }}</span>
                                     </div>
                                     <div class="d-flex align-items-center mb-2">
                                         <div class="badge bg-warning me-2">●</div>
-                                        <span>نصف ممتلئة (50-79%) - مراقبة</span>
+                                        <span>{{ t('liveMap.halfMonitor') }}</span>
                                     </div>
                                     <div class="d-flex align-items-center mb-2">
                                         <div class="badge bg-success me-2">●</div>
-                                        <span>فارغة (<50%) - طبيعية</span>
+                                        <span>{{ t('liveMap.emptyNormal') }}</span>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <h6>السائقين:</h6>
+                                    <h6>{{ t('liveMap.driversLegend') }}:</h6>
                                     <div class="d-flex align-items-center mb-2">
                                         <div class="badge bg-primary me-2">●</div>
-                                        <span>متصل - متاح للمهام</span>
+                                        <span>{{ t('liveMap.onlineAvailable') }}</span>
                                     </div>
                                     <div class="d-flex align-items-center mb-2">
                                         <div class="badge bg-warning me-2">●</div>
-                                        <span>مشغول - ينفذ مهمة</span>
+                                        <span>{{ t('liveMap.busyOnTask') }}</span>
                                     </div>
                                     <div class="d-flex align-items-center mb-2">
                                         <div class="badge bg-secondary me-2">●</div>
-                                        <span>غير متصل - غير متاح</span>
+                                        <span>{{ t('liveMap.offlineUnavailable') }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -432,18 +434,18 @@ function loadBinsOnMap() {
             const popupContent = `
                 <div class="bin-popup">
                     <h6><i class="fas fa-trash-alt"></i> ${bin.bin_id}</h6>
-                    <div class="popup-info"><strong>الموقع:</strong> ${bin.location}</div>
-                    <div class="popup-info"><strong>مستوى الامتلاء:</strong> ${fillLevel}%</div>
-                    <div class="popup-info"><strong>درجة الحرارة:</strong> ${bin.temperature || 'N/A'}°C</div>
-                    <div class="popup-info"><strong>مستوى البطارية:</strong> ${bin.battery_level || 'N/A'}%</div>
-                    <div class="popup-info"><strong>الحالة:</strong> ${getBinStatusText(bin.status)}</div>
-                    ${bin.last_collected ? `<div class="popup-info"><strong>آخر جمع:</strong> ${new Date(bin.last_collected).toLocaleDateString('ar-SA')}</div>` : ''}
+                    <div class="popup-info"><strong>{{ t('liveMap.popupLocation') }}:</strong> ${bin.location}</div>
+                    <div class="popup-info"><strong>{{ t('liveMap.popupFillLevel') }}:</strong> ${fillLevel}%</div>
+                    <div class="popup-info"><strong>{{ t('liveMap.popupTemperature') }}:</strong> ${bin.temperature || 'N/A'}°C</div>
+                    <div class="popup-info"><strong>{{ t('liveMap.popupBatteryLevel') }}:</strong> ${bin.battery_level || 'N/A'}%</div>
+                    <div class="popup-info"><strong>{{ t('liveMap.popupStatus') }}:</strong> ${getBinStatusText(bin.status)}</div>
+                    ${bin.last_collected ? `<div class="popup-info"><strong>{{ t('liveMap.popupLastCollected') }}:</strong> ${new Date(bin.last_collected).toLocaleDateString('ar-SA')}</div>` : ''}
                     <div class="popup-actions">
                         <button class="btn btn-primary btn-sm" onclick="addBinToRoute(${bin.id}, '${bin.bin_id}')">
-                            <i class="fas fa-plus"></i> إضافة للمسار
+                            <i class="fas fa-plus"></i> {{ t('liveMap.addToRoute') }}
                         </button>
                         <button class="btn btn-success btn-sm" onclick="createRouteToThis(${bin.latitude}, ${bin.longitude}, '${bin.bin_id}')">
-                            <i class="fas fa-route"></i> مسار إلى هنا
+                            <i class="fas fa-route"></i> {{ t('liveMap.routeToHere') }}
                         </button>
                     </div>
                 </div>
@@ -477,17 +479,17 @@ function loadDriversOnMap() {
             
             const popupContent = `
                 <div class="driver-popup">
-                    <h6><i class="fas fa-user"></i> ${driver.user_name || 'سائق'}</h6>
+                    <h6><i class="fas fa-user"></i> ${driver.user_name || '{{ t('liveMap.popupDriver') }}'}</h6>
                     <div class="popup-info">
                         <span class="status-indicator status-${driver.status}"></span>
-                        <strong>الحالة:</strong> ${getDriverStatusText(driver.status)}
+                        <strong>{{ t('liveMap.popupStatus') }}:</strong> ${getDriverStatusText(driver.status)}
                     </div>
-                    ${driver.vehicle_name ? `<div class="popup-info"><strong>المركبة:</strong> ${driver.vehicle_name}</div>` : ''}
-                    <div class="popup-info"><strong>التقييم:</strong> ${driver.rating || 'N/A'}/5</div>
-                    <div class="popup-info"><strong>إجمالي المهام:</strong> ${driver.total_collections || 0}</div>
+                    ${driver.vehicle_name ? `<div class="popup-info"><strong>{{ t('liveMap.popupVehicle') }}:</strong> ${driver.vehicle_name}</div>` : ''}
+                    <div class="popup-info"><strong>{{ t('liveMap.popupRating') }}:</strong> ${driver.rating || 'N/A'}/5</div>
+                    <div class="popup-info"><strong>{{ t('liveMap.popupTotalTasks') }}:</strong> ${driver.total_collections || 0}</div>
                     <div class="popup-actions">
                         <button class="btn btn-primary btn-sm" onclick="createRouteFromDriver(${driver.current_location_lat}, ${driver.current_location_lng}, '${driver.user_name}')">
-                            <i class="fas fa-route"></i> مسار من هنا
+                            <i class="fas fa-route"></i> {{ t('liveMap.routeFromHere') }}
                         </button>
                     </div>
                 </div>
@@ -503,21 +505,21 @@ function loadDriversOnMap() {
 // Helper functions for text translation
 function getBinStatusText(status) {
     const statusMap = {
-        'active': 'نشطة',
-        'inactive': 'غير نشطة',
-        'maintenance': 'صيانة',
-        'error': 'خطأ'
+        'active': '{{ t('liveMap.statusActive') }}',
+        'inactive': '{{ t('liveMap.statusInactive') }}',
+        'maintenance': '{{ t('liveMap.statusMaintenance') }}',
+        'error': '{{ t('liveMap.statusError') }}'
     };
     return statusMap[status] || status;
 }
 
 function getDriverStatusText(status) {
     const statusMap = {
-        'online': 'متصل',
-        'busy': 'مشغول',
-        'offline': 'غير متصل',
-        'break': 'استراحة',
-        'unavailable': 'غير متاح'
+        'online': '{{ t('liveMap.statusOnline') }}',
+        'busy': '{{ t('liveMap.statusBusy') }}',
+        'offline': '{{ t('liveMap.statusOffline') }}',
+        'break': '{{ t('liveMap.statusBreak') }}',
+        'unavailable': '{{ t('liveMap.statusUnavailable') }}'
     };
     return statusMap[status] || status;
 }
@@ -609,9 +611,9 @@ function addBinToRoute(binId, binName) {
 function updateSelectedBinsDisplay() {
     const container = document.getElementById('selectedBinsForRoute');
     if (selectedBinsForRoute.length === 0) {
-        container.innerHTML = '<p class="text-muted">انقر على الحاويات في الخريطة لإضافتها للمسار</p>';
+        container.innerHTML = '<p class="text-muted">{{ t('liveMap.clickBinsToAdd') }}</p>';
     } else {
-        container.innerHTML = '<div class="mb-2"><strong>الحاويات المحددة:</strong></div>' +
+        container.innerHTML = '<div class="mb-2"><strong>{{ t('liveMap.selectedBins') }}:</strong></div>' +
             selectedBinsForRoute.map(bin => 
                 `<span class="badge bg-primary me-1 mb-1">${bin.name} <button type="button" class="btn-close btn-close-white ms-1" onclick="removeBinFromRoute(${bin.id})"></button></span>`
             ).join('');
@@ -630,7 +632,7 @@ function clearSelectedBins() {
 
 function calculateRoute() {
     if (selectedBinsForRoute.length < 2) {
-        alert('يرجى اختيار حاويتين على الأقل لحساب المسار');
+        alert('{{ t('liveMap.selectAtLeast2') }}');
         return;
     }
     
@@ -657,7 +659,7 @@ function createRouteWithWaypoints(waypoints) {
         waypoints: waypoints,
         routeWhileDragging: false,
         addWaypoints: false,
-        createMarker: function() { return null; }, // Don't create markers, we have our own
+        createMarker: function() { return null; },
         lineOptions: {
             styles: [{ color: '#007bff', weight: 6, opacity: 0.8 }]
         },
@@ -676,9 +678,9 @@ function createRouteWithWaypoints(waypoints) {
         // Show route directions
         const directionsDiv = document.getElementById('routeDirections');
         directionsDiv.innerHTML = `
-            <div><strong>المسافة الإجمالية:</strong> ${distance} كم</div>
-            <div><strong>الوقت المقدر:</strong> ${time} دقيقة</div>
-            <div class="mt-2"><strong>تعليمات المسار:</strong></div>
+            <div><strong>{{ t('liveMap.totalDistanceLabel') }}:</strong> ${distance} كم</div>
+            <div><strong>{{ t('liveMap.estimatedTimeLabel') }}:</strong> ${time} دقيقة</div>
+            <div class="mt-2"><strong>{{ t('liveMap.routeDirections') }}:</strong></div>
             <ol class="mt-2">
                 ${route.instructions.map(instruction => 
                     `<li class="mb-1">${instruction.text}</li>`
@@ -726,12 +728,11 @@ function createRouteFromDriver(lat, lng, driverName) {
 
 function optimizeRoute() {
     if (selectedBinsForRoute.length < 3) {
-        alert('يرجى اختيار 3 حاويات على الأقل لتحسين المسار');
+        alert('{{ t('liveMap.selectAtLeast3') }}');
         return;
     }
     
     // Simple optimization: sort by distance from first bin
-    // In a real implementation, you would use a proper TSP algorithm
     const firstBin = selectedBinsForRoute[0];
     let firstCoords;
     
@@ -778,8 +779,6 @@ function clearRoutes() {
 }
 
 function updateRouteType() {
-    // This would change the routing profile
-    // For now, just recalculate if we have a route
     if (routingControl && selectedBinsForRoute.length >= 2) {
         calculateRoute();
     }
@@ -791,70 +790,16 @@ if (typeof io !== 'undefined') {
     
     socket.on('bin_update', function(data) {
         console.log('Bin updated:', data);
-        // Refresh bins on map
         loadBinsOnMap();
     });
     
     socket.on('driver_location_update', function(data) {
         console.log('Driver location updated:', data);
-        // Refresh drivers on map
         loadDriversOnMap();
     });
     
     socket.on('task_update', function(data) {
         console.log('Task updated:', data);
-        // Update route display if applicable
-    });
-}
-</script>boxes
-    const filterCheckboxes = document.querySelectorAll('input[type="checkbox"]');
-    filterCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            console.log(`Filter ${this.id} changed to: ${this.checked}`);
-            // In a real implementation, this would filter the map markers
-            updateMapFilters();
-        });
-    });
-});
-
-function updateMapFilters() {
-    // This function would update the map based on the selected filters
-    console.log('Updating map filters...');
-    
-    // Get current filter states
-    const filters = {
-        showBins: document.getElementById('showBins').checked,
-        showDrivers: document.getElementById('showDrivers').checked,
-        showRoutes: document.getElementById('showRoutes').checked,
-        showFull: document.getElementById('showFull').checked,
-        showHalfFull: document.getElementById('showHalfFull').checked,
-        showEmpty: document.getElementById('showEmpty').checked,
-        showOnline: document.getElementById('showOnline').checked,
-        showBusy: document.getElementById('showBusy').checked,
-        showOffline: document.getElementById('showOffline').checked
-    };
-    
-    // Apply filters to map markers (placeholder)
-    console.log('Active filters:', filters);
-}
-
-// Socket.IO for real-time updates
-if (typeof io !== 'undefined') {
-    const socket = io();
-    
-    socket.on('bin_update', function(data) {
-        console.log('Bin updated:', data);
-        // Update bin marker on map
-    });
-    
-    socket.on('driver_location_update', function(data) {
-        console.log('Driver location updated:', data);
-        // Update driver marker on map
-    });
-    
-    socket.on('task_update', function(data) {
-        console.log('Task updated:', data);
-        // Update route display if applicable
     });
 }
 </script>

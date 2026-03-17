@@ -1,0 +1,1197 @@
+{% extends "base.html" %}
+
+{% block title %}Collect Me IoT - {{ t('landing.heroTitle') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+        --landing-primary: #3498db;
+        --landing-dark: #2c3e50;
+        --landing-accent: #27ae60;
+        --landing-glow: rgba(52, 152, 219, 0.3);
+    }
+
+    * {
+        font-family: 'Inter', sans-serif;
+    }
+
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* ── Animations ─────────────────────────────────── */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(40px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes float {
+
+        0%,
+        100% {
+            transform: translateY(0px);
+        }
+
+        50% {
+            transform: translateY(-12px);
+        }
+    }
+
+    @keyframes pulse-ring {
+        0% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 var(--landing-glow);
+        }
+
+        70% {
+            transform: scale(1);
+            box-shadow: 0 0 0 14px transparent;
+        }
+
+        100% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 transparent;
+        }
+    }
+
+    @keyframes shimmer {
+        0% {
+            background-position: -200% center;
+        }
+
+        100% {
+            background-position: 200% center;
+        }
+    }
+
+    @keyframes countUp {
+        from {
+            opacity: 0;
+            transform: scale(0.5);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @keyframes gradientShift {
+        0% {
+            background-position: 0% 50%;
+        }
+
+        50% {
+            background-position: 100% 50%;
+        }
+
+        100% {
+            background-position: 0% 50%;
+        }
+    }
+
+    /* ── Scroll-reveal helpers ──────────────────────── */
+    .reveal {
+        opacity: 0;
+        transform: translateY(40px);
+        transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+
+    .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .reveal-delay-1 {
+        transition-delay: 0.1s;
+    }
+
+    .reveal-delay-2 {
+        transition-delay: 0.2s;
+    }
+
+    .reveal-delay-3 {
+        transition-delay: 0.3s;
+    }
+
+    .reveal-delay-4 {
+        transition-delay: 0.4s;
+    }
+
+    .reveal-delay-5 {
+        transition-delay: 0.5s;
+    }
+
+    .reveal-delay-6 {
+        transition-delay: 0.6s;
+    }
+
+    /* ── Navbar ─────────────────────────────────────── */
+    .landing-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1100;
+        background: rgba(44, 62, 80, 0.88);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 0.85rem 0;
+        transition: background 0.3s, box-shadow 0.3s;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        animation: fadeInDown 0.7s ease both;
+    }
+
+    .landing-nav.scrolled {
+        background: rgba(44, 62, 80, 0.97);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .landing-nav .container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .landing-nav .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        color: #fff;
+        text-decoration: none;
+        font-size: 1.3rem;
+        font-weight: 700;
+        letter-spacing: -0.3px;
+    }
+
+    .landing-nav .brand i {
+        color: var(--landing-primary);
+        font-size: 1.6rem;
+        animation: float 3s ease-in-out infinite;
+    }
+
+    .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 1.4rem;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        flex-wrap: wrap;
+    }
+
+    .nav-links a {
+        color: rgba(255, 255, 255, 0.75);
+        text-decoration: none;
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: color 0.2s;
+        position: relative;
+        padding-bottom: 3px;
+    }
+
+    .nav-links a::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: var(--landing-primary);
+        transition: width 0.3s;
+        border-radius: 2px;
+    }
+
+    .nav-links a:hover {
+        color: #fff;
+    }
+
+    .nav-links a:hover::after {
+        width: 100%;
+    }
+
+    .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    /* ── Hero ──────────────────────────────────────── */
+    .hero {
+        background: linear-gradient(135deg, var(--landing-dark) 0%, #1a252f 40%, var(--landing-primary) 100%);
+        background-size: 200% 200%;
+        animation: gradientShift 8s ease infinite;
+        color: #fff;
+        padding: 9rem 0 6rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hero::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(ellipse at 20% 50%, rgba(52, 152, 219, 0.18) 0%, transparent 60%),
+            radial-gradient(ellipse at 80% 20%, rgba(39, 174, 96, 0.12) 0%, transparent 50%);
+        pointer-events: none;
+    }
+
+    /* floating particles */
+    .hero-particle {
+        position: absolute;
+        border-radius: 50%;
+        opacity: 0.15;
+        animation: float var(--dur, 4s) ease-in-out infinite var(--delay, 0s);
+    }
+
+    .hero-particle:nth-child(1) {
+        width: 80px;
+        height: 80px;
+        background: #3498db;
+        top: 10%;
+        left: 8%;
+        --dur: 5s;
+        --delay: 0s;
+    }
+
+    .hero-particle:nth-child(2) {
+        width: 50px;
+        height: 50px;
+        background: #27ae60;
+        top: 65%;
+        left: 85%;
+        --dur: 4s;
+        --delay: 1s;
+    }
+
+    .hero-particle:nth-child(3) {
+        width: 35px;
+        height: 35px;
+        background: #e67e22;
+        top: 30%;
+        left: 90%;
+        --dur: 6s;
+        --delay: 0.5s;
+    }
+
+    .hero-particle:nth-child(4) {
+        width: 60px;
+        height: 60px;
+        background: #9b59b6;
+        top: 75%;
+        left: 5%;
+        --dur: 7s;
+        --delay: 2s;
+    }
+
+    .hero .container {
+        position: relative;
+        z-index: 1;
+    }
+
+    .hero h1 {
+        font-size: 3.4rem;
+        font-weight: 900;
+        margin-bottom: 1.1rem;
+        letter-spacing: -1px;
+        line-height: 1.15;
+        background: linear-gradient(90deg, #fff 0%, #a8d8f0 50%, #fff 100%);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: fadeInUp 0.9s ease both, shimmer 4s linear infinite;
+    }
+
+    .hero p {
+        font-size: 1.08rem;
+        max-width: 580px;
+        margin: 0 auto 2.2rem;
+        opacity: 0.85;
+        line-height: 1.75;
+        animation: fadeInUp 1s ease 0.2s both;
+    }
+
+    .hero-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        animation: fadeInUp 1s ease 0.4s both;
+    }
+
+    .hero-buttons .btn {
+        padding: 0.8rem 2.2rem;
+        font-weight: 700;
+        border-radius: 50px;
+        font-size: 0.95rem;
+        transition: transform 0.25s, box-shadow 0.25s;
+    }
+
+    .hero-buttons .btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+    }
+
+    /* scroll indicator */
+    .scroll-indicator {
+        margin-top: 3rem;
+        animation: fadeInUp 1s ease 0.7s both;
+    }
+
+    .scroll-indicator span {
+        display: block;
+        width: 28px;
+        height: 48px;
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        border-radius: 20px;
+        margin: 0 auto;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .scroll-indicator span::before {
+        content: '';
+        position: absolute;
+        top: 6px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 4px;
+        height: 8px;
+        background: #fff;
+        border-radius: 2px;
+        animation: float 1.4s ease-in-out infinite;
+    }
+
+    /* ── Sections ──────────────────────────────────── */
+    .section {
+        padding: 6rem 0;
+    }
+
+    .section-light {
+        background: #fff;
+    }
+
+    .section-gray {
+        background: #f4f6f8;
+    }
+
+    .section-title {
+        text-align: center;
+        margin-bottom: 3.5rem;
+    }
+
+    .section-title h2 {
+        font-size: 2.6rem;
+        font-weight: 800;
+        color: var(--landing-dark);
+        margin-bottom: 0.7rem;
+        letter-spacing: -0.5px;
+    }
+
+    .section-title .title-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, var(--landing-primary), var(--landing-accent));
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        padding: 0.3rem 1rem;
+        border-radius: 20px;
+        margin-bottom: 1rem;
+    }
+
+    .section-title p {
+        color: #7f8c8d;
+        font-size: 1.05rem;
+        max-width: 520px;
+        margin: 0 auto;
+        line-height: 1.7;
+    }
+
+    .title-line {
+        width: 50px;
+        height: 4px;
+        background: linear-gradient(90deg, var(--landing-primary), var(--landing-accent));
+        border-radius: 2px;
+        margin: 1rem auto 0;
+    }
+
+    /* ── Feature Cards ─────────────────────────────── */
+    #features .row {
+        gap: 0;
+    }
+
+    #features .col-lg-4,
+    #features .col-md-6 {
+        padding: 0.85rem;
+    }
+
+    .feature-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 2.4rem 2rem;
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    .feature-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, transparent 60%, rgba(52, 152, 219, 0.04));
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-8px) scale(1.01);
+        box-shadow: 0 16px 45px rgba(0, 0, 0, 0.12);
+    }
+
+    .feature-card:hover::before {
+        opacity: 1;
+    }
+
+    .feature-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.4rem;
+        font-size: 2rem;
+        color: #fff;
+        transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        animation: pulse-ring 3s ease-in-out infinite;
+    }
+
+    .feature-card:hover .feature-icon {
+        transform: scale(1.12) rotate(-5deg);
+    }
+
+    .feature-card h5 {
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 0.8rem;
+        color: var(--landing-dark);
+    }
+
+    .feature-card p {
+        color: #7f8c8d;
+        font-size: 0.92rem;
+        line-height: 1.75;
+        margin: 0;
+    }
+
+    /* ── How it Works ──────────────────────────────── */
+    .how-wrapper {
+        position: relative;
+    }
+
+    .how-connector {
+        position: absolute;
+        top: 28px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--landing-primary), var(--landing-accent));
+        z-index: 0;
+        opacity: 0.25;
+    }
+
+    .step-card {
+        text-align: center;
+        padding: 1.5rem 1rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .step-number {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--landing-primary), var(--landing-dark));
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        font-weight: 800;
+        margin: 0 auto 1.2rem;
+        box-shadow: 0 4px 16px rgba(52, 152, 219, 0.35);
+        transition: transform 0.3s;
+    }
+
+    .step-card:hover .step-number {
+        transform: scale(1.12) rotate(5deg);
+    }
+
+    .step-card h5 {
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--landing-dark);
+        margin-bottom: 0.5rem;
+    }
+
+    .step-card p {
+        color: #7f8c8d;
+        font-size: 0.88rem;
+        line-height: 1.65;
+    }
+
+    /* ── Stats ─────────────────────────────────────── */
+    .stats-section {
+        background: linear-gradient(135deg, var(--landing-dark), #1a252f);
+        color: #fff;
+        padding: 4.5rem 0;
+    }
+
+    .stat-box {
+        text-align: center;
+        padding: 1.8rem 1rem;
+    }
+
+    .stat-box .number {
+        font-size: 2.8rem;
+        font-weight: 900;
+        background: linear-gradient(135deg, var(--landing-primary), var(--landing-accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -1px;
+        animation: countUp 0.6s ease both;
+    }
+
+    .stat-box .label {
+        font-size: 0.88rem;
+        color: rgba(255, 255, 255, 0.6);
+        margin-top: 0.4rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+    }
+
+    /* ── About ─────────────────────────────────────── */
+    .about-text {
+        font-size: 1rem;
+        line-height: 1.85;
+        color: #555;
+    }
+
+    .about-highlight {
+        background: linear-gradient(135deg, rgba(52, 152, 219, 0.06), rgba(39, 174, 96, 0.06));
+        border-left: 4px solid var(--landing-primary);
+        border-radius: 0 12px 12px 0;
+        padding: 1rem 1.4rem;
+        margin-top: 1.5rem;
+        font-weight: 500;
+        color: var(--landing-dark);
+    }
+
+    /* ── CTA Band ───────────────────────────────────── */
+    .cta-band {
+        background: linear-gradient(135deg, var(--landing-primary) 0%, var(--landing-accent) 100%);
+        color: #fff;
+        padding: 5rem 0;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .cta-band::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .cta-band .container {
+        position: relative;
+        z-index: 1;
+    }
+
+    .cta-band h2 {
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin-bottom: 0.8rem;
+    }
+
+    .cta-band p {
+        opacity: 0.9;
+        margin-bottom: 2rem;
+        font-size: 1rem;
+    }
+
+    .cta-band .btn {
+        padding: 0.85rem 2.5rem;
+        font-weight: 700;
+        font-size: 1rem;
+        border-radius: 50px;
+        background: #fff;
+        color: var(--landing-primary);
+        border: none;
+        transition: transform 0.25s, box-shadow 0.25s;
+    }
+
+    .cta-band .btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    /* ── Footer ────────────────────────────────────── */
+    .landing-footer {
+        background: var(--landing-dark);
+        color: rgba(255, 255, 255, 0.7);
+        padding: 5rem 0 2.5rem;
+        position: relative;
+    }
+
+    .landing-footer::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--landing-primary), var(--landing-accent), #e67e22, var(--landing-primary));
+    }
+
+    .landing-footer h5 {
+        color: #fff;
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 1.5rem;
+        letter-spacing: 0.3px;
+        position: relative;
+        padding-bottom: 0.75rem;
+    }
+
+    .landing-footer h5::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 35px;
+        height: 2px;
+        background: var(--landing-primary);
+        border-radius: 2px;
+    }
+
+    .landing-footer .footer-brand p {
+        font-size: 0.92rem;
+        line-height: 1.75;
+        margin-top: 1rem;
+        color: rgba(255, 255, 255, 0.55);
+    }
+
+    .landing-footer a {
+        color: rgba(255, 255, 255, 0.55);
+        text-decoration: none;
+        transition: color 0.25s, padding-left 0.25s;
+    }
+
+    .landing-footer a:hover {
+        color: #fff;
+        padding-left: 4px;
+    }
+
+    .footer-links {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .footer-links li {
+        margin-bottom: 0.8rem;
+        font-size: 0.92rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .footer-links li i {
+        width: 18px;
+        text-align: center;
+        color: var(--landing-primary);
+        font-size: 0.85rem;
+    }
+
+    .footer-social {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+
+    .footer-social a {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.6);
+        transition: all 0.3s ease;
+        padding-left: 0 !important;
+    }
+
+    .footer-social a:hover {
+        background: var(--landing-primary);
+        color: #fff;
+        transform: translateY(-3px);
+        padding-left: 0 !important;
+    }
+
+    .footer-bottom {
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        margin-top: 3rem;
+        padding-top: 2rem;
+        text-align: center;
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.4);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .footer-bottom span {
+        display: block;
+    }
+
+    /* ── Responsive ────────────────────────────────── */
+    @media (max-width: 992px) {
+        .how-connector {
+            display: none;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .hero {
+            padding: 7rem 0 4rem;
+        }
+
+        .hero h1 {
+            font-size: 2.2rem;
+        }
+
+        .hero p {
+            font-size: 1rem;
+        }
+
+        .section-title h2 {
+            font-size: 2rem;
+        }
+
+        .nav-links {
+            display: none;
+        }
+
+        .stat-box .number {
+            font-size: 2.2rem;
+        }
+
+        .section {
+            padding: 4rem 0;
+        }
+
+        /* Footer responsive */
+        .landing-footer {
+            padding: 3.5rem 1.5rem 2rem;
+            text-align: center;
+        }
+
+        .landing-footer h5::after {
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .landing-footer .row > [class*="col-"] {
+            margin-bottom: 2rem;
+        }
+
+        .footer-links li {
+            justify-content: center;
+        }
+
+        .footer-social {
+            justify-content: center;
+        }
+
+        .footer-bottom {
+            padding-top: 1.5rem;
+            margin-top: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ═══ Navbar ═══ -->
+<nav class="landing-nav" id="mainNav">
+    <div class="container">
+        <a href="#home" class="brand">
+            <i class="fas fa-recycle"></i>
+            <span>Collect Me IoT</span>
+        </a>
+
+        <ul class="nav-links">
+            <li><a href="#home">{{ t('landing.navHome') }}</a></li>
+            <li><a href="#features">{{ t('landing.navFeatures') }}</a></li>
+            <li><a href="#how">{{ t('landing.navHowItWorks') }}</a></li>
+            <li><a href="#about">{{ t('landing.navAbout') }}</a></li>
+        </ul>
+
+        <div class="nav-actions">
+            <a href="/set-locale/{{ 'ar' if locale == 'en' else 'en' }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-globe"></i> {{ t('langSwitcher.switchTo') }}
+            </a>
+            <a href="{{ url_for('main.login') }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-sign-in-alt"></i> {{ t('landing.login') }}
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- ═══ Hero ═══ -->
+<section class="hero" id="home">
+    <div class="hero-particle"></div>
+    <div class="hero-particle"></div>
+    <div class="hero-particle"></div>
+    <div class="hero-particle"></div>
+    <div class="container">
+        <h1>{{ t('landing.heroTitle') }}</h1>
+        <p>{{ t('landing.heroSubtitle') }}</p>
+        <div class="hero-buttons">
+            <a href="{{ url_for('main.login') }}" class="btn btn-light btn-lg">
+                <i class="fas fa-rocket"></i> {{ t('landing.getStarted') }}
+            </a>
+            <a href="#features" class="btn btn-outline-light btn-lg">
+                <i class="fas fa-arrow-down"></i> {{ t('landing.navFeatures') }}
+            </a>
+        </div>
+        <div class="scroll-indicator">
+            <a href="#features"><span></span></a>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ Features ═══ -->
+<section class="section section-gray" id="features">
+    <div class="container">
+        <div class="section-title reveal">
+            <span class="title-badge"><i class="fas fa-star"></i> Features</span>
+            <h2>{{ t('landing.featuresTitle') }}</h2>
+            <p>{{ t('landing.featuresSubtitle') }}</p>
+            <div class="title-line"></div>
+        </div>
+        <div class="row">
+            <div class="col-lg-4 col-md-6 reveal reveal-delay-1">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #3498db, #2980b9);">
+                        <i class="fas fa-wifi"></i>
+                    </div>
+                    <h5>{{ t('landing.feature1Title') }}</h5>
+                    <p>{{ t('landing.feature1Desc') }}</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 reveal reveal-delay-2">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #27ae60, #229954);">
+                        <i class="fas fa-route"></i>
+                    </div>
+                    <h5>{{ t('landing.feature2Title') }}</h5>
+                    <p>{{ t('landing.feature2Desc') }}</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 reveal reveal-delay-3">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #e67e22, #d35400);">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h5>{{ t('landing.feature3Title') }}</h5>
+                    <p>{{ t('landing.feature3Desc') }}</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 reveal reveal-delay-4">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #9b59b6, #8e44ad);">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h5>{{ t('landing.feature4Title') }}</h5>
+                    <p>{{ t('landing.feature4Desc') }}</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 reveal reveal-delay-5">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                        <i class="fas fa-map-marked-alt"></i>
+                    </div>
+                    <h5>{{ t('landing.feature5Title') }}</h5>
+                    <p>{{ t('landing.feature5Desc') }}</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 reveal reveal-delay-6">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #1abc9c, #16a085);">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h5>{{ t('landing.feature6Title') }}</h5>
+                    <p>{{ t('landing.feature6Desc') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ Stats Band ═══ -->
+<section class="stats-section">
+    <div class="container">
+        <div class="row g-0 text-center">
+            <div class="col-6 col-md-3 reveal reveal-delay-1">
+                <div class="stat-box">
+                    <div class="number">150+</div>
+                    <div class="label">{{ t('landing.aboutStat1') }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 reveal reveal-delay-2">
+                <div class="stat-box">
+                    <div class="number">25+</div>
+                    <div class="label">{{ t('landing.aboutStat2') }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 reveal reveal-delay-3">
+                <div class="stat-box">
+                    <div class="number">5K+</div>
+                    <div class="label">{{ t('landing.aboutStat3') }}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 reveal reveal-delay-4">
+                <div class="stat-box">
+                    <div class="number">99.9%</div>
+                    <div class="label">{{ t('landing.aboutStat4') }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ How it Works ═══ -->
+<section class="section section-light" id="how">
+    <div class="container">
+        <div class="section-title reveal">
+            <span class="title-badge"><i class="fas fa-cogs"></i> Process</span>
+            <h2>{{ t('landing.howTitle') }}</h2>
+            <p>{{ t('landing.howSubtitle') }}</p>
+            <div class="title-line"></div>
+        </div>
+        <div class="row g-4 how-wrapper">
+            <div class="how-connector d-none d-lg-block"></div>
+            <div class="col-lg-3 col-md-6 reveal reveal-delay-1">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <h5>{{ t('landing.step1Title') }}</h5>
+                    <p>{{ t('landing.step1Desc') }}</p>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 reveal reveal-delay-2">
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <h5>{{ t('landing.step2Title') }}</h5>
+                    <p>{{ t('landing.step2Desc') }}</p>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 reveal reveal-delay-3">
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <h5>{{ t('landing.step3Title') }}</h5>
+                    <p>{{ t('landing.step3Desc') }}</p>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 reveal reveal-delay-4">
+                <div class="step-card">
+                    <div class="step-number">4</div>
+                    <h5>{{ t('landing.step4Title') }}</h5>
+                    <p>{{ t('landing.step4Desc') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ About ═══ -->
+<section class="section section-gray" id="about">
+    <div class="container">
+        <div class="section-title reveal">
+            <span class="title-badge"><i class="fas fa-info-circle"></i> About</span>
+            <h2>{{ t('landing.aboutTitle') }}</h2>
+            <div class="title-line"></div>
+        </div>
+        <div class="row align-items-center g-5">
+            <div class="col-lg-7 reveal reveal-delay-1">
+                <p class="about-text">{{ t('landing.aboutDesc') }}</p>
+                <div class="about-highlight">
+                    <i class="fas fa-leaf text-success me-2"></i>
+                    Powered by IoT sensors and real-time analytics for smarter waste management.
+                </div>
+            </div>
+            <div class="col-lg-5 reveal reveal-delay-2">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="stat-box"
+                            style="background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.07);padding:1.8rem 1rem;">
+                            <div class="number"
+                                style="-webkit-text-fill-color:unset;color:var(--landing-primary);font-size:2rem;">150+
+                            </div>
+                            <div class="label" style="color:#7f8c8d;">{{ t('landing.aboutStat1') }}</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-box"
+                            style="background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.07);padding:1.8rem 1rem;">
+                            <div class="number"
+                                style="-webkit-text-fill-color:unset;color:var(--landing-accent);font-size:2rem;">25+
+                            </div>
+                            <div class="label" style="color:#7f8c8d;">{{ t('landing.aboutStat2') }}</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-box"
+                            style="background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.07);padding:1.8rem 1rem;">
+                            <div class="number" style="-webkit-text-fill-color:unset;color:#e67e22;font-size:2rem;">5K+
+                            </div>
+                            <div class="label" style="color:#7f8c8d;">{{ t('landing.aboutStat3') }}</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-box"
+                            style="background:#fff;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.07);padding:1.8rem 1rem;">
+                            <div class="number" style="-webkit-text-fill-color:unset;color:#9b59b6;font-size:2rem;">
+                                99.9%</div>
+                            <div class="label" style="color:#7f8c8d;">{{ t('landing.aboutStat4') }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ CTA Band ═══ -->
+<section class="cta-band reveal">
+    <div class="container">
+        <h2> Ready to go smarter?</h2>
+        <p>Join the future of smart waste collection with Collect Me IoT.</p>
+        <a href="{{ url_for('main.login') }}" class="btn">
+            <i class="fas fa-sign-in-alt me-2"></i> {{ t('landing.login') }}
+        </a>
+    </div>
+</section>
+
+<!-- ═══ Footer ═══ -->
+<footer class="landing-footer">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <h5><i class="fas fa-recycle me-2" style="color:var(--landing-primary);"></i>Collect Me IoT</h5>
+                <p style="font-size:0.9rem;">{{ t('landing.footerDesc') }}</p>
+            </div>
+            <div class="col-lg-4">
+                <h5>{{ t('landing.quickLinks') }}</h5>
+                <ul class="footer-links">
+                    <li><a href="#home">{{ t('landing.navHome') }}</a></li>
+                    <li><a href="#features">{{ t('landing.navFeatures') }}</a></li>
+                    <li><a href="#how">{{ t('landing.navHowItWorks') }}</a></li>
+                    <li><a href="#about">{{ t('landing.navAbout') }}</a></li>
+                    <li><a href="{{ url_for('main.login') }}">{{ t('landing.login') }}</a></li>
+                </ul>
+            </div>
+            <div class="col-lg-4">
+                <h5>{{ t('landing.contactInfo') }}</h5>
+                <ul class="footer-links">
+                    <li><i class="fas fa-envelope me-2" style="color:var(--landing-primary);"></i> {{
+                        t('landing.contactInfoEmail') }}</li>
+                    <li>
+                        <a href="https://github.com/BasharShakeeb?tab=repositories" target="_blank">
+                            <i class="fab fa-github me-2"></i> Bashar Shakeeb
+                        </a>
+                    </li>
+                    <li><i class="fas fa-university me-2" style="color:var(--landing-primary);"></i> {{
+                        t('landing.contactInfoUniversity') }}</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2026 {{ t('landing.copyright') }}
+        </div>
+    </div>
+</footer>
+
+<!-- ═══ JS: Scroll Reveal + Navbar ═══ -->
+<script>
+    // Navbar scroll effect
+    const nav = document.getElementById('mainNav');
+    window.addEventListener('scroll', () => {
+        nav.classList.toggle('scrolled', window.scrollY > 60);
+    });
+
+    // Intersection Observer – scroll reveal
+    const revealEls = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) {
+                e.target.classList.add('visible');
+                observer.unobserve(e.target);
+            }
+        });
+    }, { threshold: 0.12 });
+    revealEls.forEach(el => observer.observe(el));
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', e => {
+            const target = document.querySelector(a.getAttribute('href'));
+            if (target) {
+                e.preventDefault();
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+</script>
+
+{% endblock %}
