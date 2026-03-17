@@ -18,21 +18,31 @@ from routes.task_routes import task_api
 app = Flask(__name__)
 
 # Database Configuration - PostgreSQL Setup
-# You can change these settings or set them as environment variables
+# Priority: 1. DATABASE_URL (for Render/Cloud), 2. Individual variables, 3. Defaults
+DATABASE_URL = os.getenv('DATABASE_URL')
 DB_HOST = os.getenv('DB_HOST', 'localhost')
 DB_PORT = os.getenv('DB_PORT', '5432')
 DB_USER = os.getenv('DB_USER', 'postgres')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'postgres')  # Set your PostgreSQL password here
-DB_NAME = 'collect_me_iot'  # Database name
+DB_PASSWORD = os.getenv('DB_PASSWORD', '8655090027')
+DB_NAME = os.getenv('DB_NAME', 'collect_me_iot')
+
+if DATABASE_URL:
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+
 # Configuration
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'collectme-iot-secret-key-2024')
 
-# Try PostgreSQL first, fallback to SQLite if PostgreSQL is not available
+# Try PostgreSQL connection test
 try:
     import psycopg2
-    test_conn = psycopg2.connect(host=DB_HOST, port=DB_PORT, user=DB_USER, password=DB_PASSWORD, dbname='postgres')
+    conn_uri = app.config['SQLALCHEMY_DATABASE_URI']
+    test_conn = psycopg2.connect(conn_uri)
     test_conn.close()
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+    
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'pool_pre_ping': True,
         'pool_recycle': 300,
@@ -87,15 +97,10 @@ def api_translations():
 
 
 
-if __name__ == '__main__':
-    
-    with app.app_context():
-        
+# Database initialization and admin creation
+with app.app_context():
+    try:
         db.create_all()
-        
-        
-        # Create admin user if it doesn't exist
-        
         admin_user = User.query.filter_by(email='admin@collectme.com').first()
         if not admin_user:
             admin_user = User(
@@ -111,10 +116,11 @@ if __name__ == '__main__':
             print('Created admin user: admin@collectme.com / admin123')
         else:
             print("Admin user already exists.")
+    except Exception as e:
+        print(f"Error during startup database sync: {e}")
 
-   
-    
-    # Run with SocketIO
+if __name__ == '__main__':
+    # Run with SocketIO locally
     print("Starting SocketIO server on port 5000...")
     socketio.run(app, debug=True, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
     print("SocketIO server exited.")
