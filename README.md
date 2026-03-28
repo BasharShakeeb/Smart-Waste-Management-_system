@@ -38,6 +38,21 @@ a# Collect Me IoT - نظام إدارة النفايات الذكي
 - تحديث حالة المهام
 - تسجيل جمع الحاويات
 
+## هيكل النظام (System Architecture)
+<!-- استبدل الرابط أدناه بمسار صورة هيكل النظام الخاصة بك -->
+![System Architecture](static/images/system_architecture.png)
+
+## مخطط قاعدة البيانات (Database Schema)
+<!-- استبدل الرابط أدناه بمسار صورة مخطط قاعدة البيانات الخاصة بك -->
+![Database Schema](static/images/database_schema.png)
+
+## لقطات الشاشة (Screenshots)
+<!-- استبدل الروابط أدناه بمسارات لقطات الشاشة الفعلية للمشروع -->
+- **لوحة التحكم (Dashboard):**
+  ![Dashboard](static/images/dashboard.png)
+- **الخريطة الحية (Live Map):**
+  ![Live Map](static/images/live_map.png)
+
 ## التقنيات المستخدمة
 
 - **Backend**: Python Flask

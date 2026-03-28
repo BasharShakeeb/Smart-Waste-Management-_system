@@ -151,7 +151,14 @@ def api_add_sensor_reading(bin_id):
 
         # ── حساب fill_level في الـ Backend ──
         # الحساس يرسل distance فقط، والـ Backend يحسب النسبة
-        distance = data.get('distance') # receive distance from sensor
+        # distance = data.get('distance') # receive distance from sensor
+        distance = data.get('distance')
+
+        if distance is None:
+            return jsonify({'error': '"distance" field is required'}), 400
+
+        # ✅ الحل هنا
+        distance = float(distance)
 
         if distance is None:
             return jsonify({'error': '"distance" field is required'}), 400

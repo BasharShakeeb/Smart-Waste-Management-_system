@@ -1,98 +1,79 @@
 #include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
-#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
+// #include <ESP8266HTTPClient.h>
 
-// --- إعدادات الواي فاي ---
+// 🔹 بيانات الواي فاي
 const char* ssid = "bashar";
 const char* password = "bashar12";
 
-// --- إعدادات السيرفر الخلفي ---
-const char* serverUrl = "http://10.119.134.63:5000/api/bins/2/sensor-readings"; 
-const float binDepth = 100.0; // عمق الصندوق
+// 🔹 رابط السيرفر (موقعك)
+//const char* serverUrl = "https://smart-waste-management-system-1-hi0q.onrender.com/api/bins/1/sensor-readings";
+const char* serverUrl = "http://127.0.0.1:5000/api/bins/1/sensor-readings";
 
-// --- تعريف الأرجل ---
-const int trigPin = D1; 
-const int echoPin = D2;
-
-// --- مؤقت الإرسال ---
-unsigned long lastTime = 0;
-unsigned long timerDelay = 6000; // 6 ثواني
+// 🔹 أرجل الحساس
+#define TRIG D5
+#define ECHO D6 
 
 void setup() {
   Serial.begin(115200);
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
-  delay(1000); // تثبيت الحساس
+
+  pinMode(TRIG, OUTPUT);
+  pinMode(ECHO, INPUT);
 
   // الاتصال بالواي فاي
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi");
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-  Serial.println("\nConnected to WiFi!");
+
+  Serial.println("\nConnected!");
 }
 
 void loop() {
-  if ((millis() - lastTime) > timerDelay) {
+  long duration;
+  float distance;
 
-    if (WiFi.status() == WL_CONNECTED) {
+  // إرسال نبضة
+  digitalWrite(TRIG, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG, LOW);
 
-      // ---- قياس المسافة ----
-      digitalWrite(trigPin, LOW);
-      delayMicroseconds(2);
-      digitalWrite(trigPin, HIGH);
-      delayMicroseconds(10);
-      digitalWrite(trigPin, LOW);
+  // استقبال النبضة
+  duration = pulseIn(ECHO, HIGH);
 
-      long duration = pulseIn(echoPin, HIGH);
-      Serial.print("Raw duration: ");
-      Serial.println(duration);
+  // حساب المسافة (cm)
+  distance = duration * 0.034 / 2;
 
-      float distanceCm = duration * 0.017;
-      Serial.printf("Distance: %.2f cm\n", distanceCm);
+  Serial.print("Distance: ");
+  Serial.println(distance);
 
-      // ---- تحقق من القراءة ----
-      if (distanceCm <= 0 || distanceCm > binDepth) {
-        Serial.println("Invalid distance reading, skipping send.");
-      } else {
-        int fillLevel = constrain((int)((1.0 - distanceCm / binDepth) * 100), 0, 100);
-        Serial.printf("Fill Level: %d%%\n", fillLevel);
+  // إرسال البيانات للسيرفر
+  if (WiFi.status() == WL_CONNECTED) {
 
-        // ---- إرسال البيانات ----
-        WiFiClient client;
-        HTTPClient http;
-        http.begin(client, serverUrl);
-        http.addHeader("Content-Type", "application/json");
+    WiFiClientSecure client;
+    client.setInsecure();  // مهم لتفادي مشاكل SSL
 
-        String payload = "{\"fill_level\":" + String(fillLevel) + 
-                         ",\"battery_level\":100" +
-                         ",\"signal_strength\":" + String(WiFi.RSSI()) + 
-                         ",\"temperature\":25.0,\"humidity\":50.0}";
+    HTTPClient http;
+    http.begin(client, serverUrl);
+    http.addHeader("Content-Type", "application/json");
 
-        int httpCode = http.POST(payload);
-        if (httpCode > 0) {
-          Serial.printf("HTTP POST successful, code: %d\n", httpCode);
-        } else {
-          Serial.printf("HTTP POST failed, code: %d. Retrying...\n", httpCode);
-          delay(1000);
-          httpCode = http.POST(payload);
-          if (httpCode > 0) {
-            Serial.printf("Retry successful, code: %d\n", httpCode);
-          } else {
-            Serial.printf("Retry failed, code: %d\n", httpCode);
-          }
-        }
-        http.end();
-      }
+    // JSON data
+    String json = "{\"distance\": " + String(distance) + "}";
 
-    } else {
-      Serial.println("WiFi disconnected. Reconnecting...");
-      WiFi.reconnect();
-    }
+    int httpResponseCode = http.POST(json);
 
-    lastTime = millis();
+    Serial.print("HTTP Response Code: ");
+    Serial.println(httpResponseCode);
+
+    http.end();
+  } else {
+    Serial.println("WiFi Disconnected");
   }
-}
 
+  delay(5000); // كل 5 ثواني
+}
