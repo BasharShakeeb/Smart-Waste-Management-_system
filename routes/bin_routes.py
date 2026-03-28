@@ -139,11 +139,19 @@ def api_delete_bin(bin_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@bin_api.route('/api/bins/<int:bin_id>/sensor-readings', methods=['POST'])
-def api_add_sensor_reading(bin_id):
+@bin_api.route('/api/bins/<string:bin_identifier>/sensor-readings', methods=['POST'])
+def api_add_sensor_reading(bin_identifier):
     try:
-        # Fetch the single existing row for this bin
-        bin_obj = Bin.query.get_or_404(bin_id)
+        # Fetch the single existing row for this bin by id or bin_id
+        bin_obj = None
+        if str(bin_identifier).isdigit():
+            bin_obj = Bin.query.get(int(bin_identifier))
+        if not bin_obj:
+            bin_obj = Bin.query.filter_by(bin_id=str(bin_identifier)).first()
+            
+        if not bin_obj:
+            return jsonify({'error': 'Bin not found'}), 404
+            
         data = request.get_json()
         print("data:", data)
         if not data:
