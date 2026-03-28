@@ -1,15 +1,13 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
-// #include <ESP8266HTTPClient.h>
+#include <ESP8266HTTPClient.h>
 
 // 🔹 بيانات الواي فاي
 const char* ssid = "bashar";
 const char* password = "bashar12";
 
 // 🔹 رابط السيرفر (موقعك)
-//const char* serverUrl = "https://smart-waste-management-system-1-hi0q.onrender.com/api/bins/1/sensor-readings";
-const char* serverUrl = "http://127.0.0.1:5000/api/bins/1/sensor-readings";
-
+const char* serverUrl = "https://smart-waste-management-system-1-hi0q.onrender.com/api/bins/1/sensor-readings";
 // 🔹 أرجل الحساس
 #define TRIG D5
 #define ECHO D6 

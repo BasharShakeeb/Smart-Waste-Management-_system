@@ -139,85 +139,114 @@ def api_delete_bin(bin_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@bin_api.route('/api/bins/<int:bin_id>/sensor-readings', methods=['POST'])
-def api_add_sensor_reading(bin_id):
-    try:
-        # Fetch the single existing row for this bin
-        bin_obj = Bin.query.get_or_404(bin_id)
-        data = request.get_json()
-        print("data:", data)
-        if not data:
-            return jsonify({'error': 'JSON data required'}), 400
+# @bin_api.route('/api/bins/<int:bin_id>/sensor-readings', methods=['POST'])
+# def api_add_sensor_reading(bin_id):
+#     try:
+#         # Fetch the single existing row for this bin
+#         bin_obj = Bin.query.get_or_404(bin_id)
+#         data = request.get_json()
+#         print("data:", data)
+#         if not data:
+#             return jsonify({'error': 'JSON data required'}), 400
 
-        # ── حساب fill_level في الـ Backend ──
-        # الحساس يرسل distance فقط، والـ Backend يحسب النسبة
-        # distance = data.get('distance') # receive distance from sensor
-        distance = data.get('distance')
+#         # ── حساب fill_level في الـ Backend ──
+#         # الحساس يرسل distance فقط، والـ Backend يحسب النسبة
+#         # distance = data.get('distance') # receive distance from sensor
+#         distance = data.get('distance')
+
+#         if distance is None:
+#             return jsonify({'error': '"distance" field is required'}), 400
+
+#         # ✅ الحل هنا
+#         distance = float(distance)
+
+#         if distance is None:
+#             return jsonify({'error': '"distance" field is required'}), 400
+
+#         height = bin_obj.container_height # get container height from database
+#         if not height or height <= 0:
+#             return jsonify({'error': 'container_height is not set for this bin'}), 400
+
+#         # Fill Level (%) = ((Container Height − Distance) / Container Height) × 100
+#         fill_level = ((height - distance) / height) * 100
+#         fill_level = max(0, min(100, int(fill_level)))  # تقييد بين 0 و 100
+
+#         # تحديث الصف الموجود في قاعدة البيانات
+#         bin_obj.fill_level      = fill_level
+#         bin_obj.temperature     = data.get('temperature',    bin_obj.temperature)
+#         bin_obj.humidity        = data.get('humidity',       bin_obj.humidity)
+#         bin_obj.battery_level   = data.get('battery_level',  bin_obj.battery_level)
+#         bin_obj.signal_strength = data.get('signal_strength', bin_obj.signal_strength)
+#         bin_obj.updated_at      = datetime.utcnow() # update the time of the last update
+
+#         # Persist — no new row inserted
+#         db.session.commit()
+
+#         return jsonify({
+#             'message': 'Sensor data received and fill level calculated',
+#             'distance_cm': distance,
+#             'container_height_cm': height,
+#             'fill_level': fill_level,
+#             'bin': bin_obj.to_dict()
+#         }), 200
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({'error': str(e)}), 500
+
+# # API endpoints for full bins and driver bins
+# @bin_api.route('/api/bins/full')
+# def api_full_bins():
+#     """API endpoint to get full bins data for task creation"""
+#     if 'user_id' not in session or session['role'] not in ['admin', 'manager']:
+#         return jsonify({'error': 'Unauthorized'}), 401
+    
+#     full_bins = Bin.query.filter(Bin.fill_level >= 80, Bin.status == 'active').all()
+    
+#     bins_data = []
+#     for bin_obj in full_bins:
+#         bins_data.append({
+#             'id': bin_obj.id,
+#             'bin_id': bin_obj.bin_id,
+#             'location': bin_obj.location,
+#             'latitude': float(bin_obj.latitude),
+#             'longitude': float(bin_obj.longitude),
+#             'fill_level': bin_obj.fill_level,
+#             'bin_type': bin_obj.bin_type,
+#             'status': bin_obj.status,
+#             'last_collected': bin_obj.last_collected.isoformat() if bin_obj.last_collected else None
+#         })
+    
+#     return jsonify({'bins': bins_data})
+
+@app.route('/api/bins/<int:id>/sensor-readings', methods=['POST'])
+def sensor_reading(id):
+    try:
+        data = request.get_json()
+        print("DATA:", data)
+
+        distance = data.get("distance")
+        print("DISTANCE:", distance)
+
+        bin = Bin.query.get(id)
+        print("BIN:", bin)
+
+        if not bin:
+            return jsonify({"error": "Bin not found"}), 404
 
         if distance is None:
-            return jsonify({'error': '"distance" field is required'}), 400
+            return jsonify({"error": "Distance missing"}), 400
 
-        # ✅ الحل هنا
         distance = float(distance)
 
-        if distance is None:
-            return jsonify({'error': '"distance" field is required'}), 400
+        fill_level = bin.height - distance
+        print("FILL:", fill_level)
 
-        height = bin_obj.container_height # get container height from database
-        if not height or height <= 0:
-            return jsonify({'error': 'container_height is not set for this bin'}), 400
+        return jsonify({"status": "success"})
 
-        # Fill Level (%) = ((Container Height − Distance) / Container Height) × 100
-        fill_level = ((height - distance) / height) * 100
-        fill_level = max(0, min(100, int(fill_level)))  # تقييد بين 0 و 100
-
-        # تحديث الصف الموجود في قاعدة البيانات
-        bin_obj.fill_level      = fill_level
-        bin_obj.temperature     = data.get('temperature',    bin_obj.temperature)
-        bin_obj.humidity        = data.get('humidity',       bin_obj.humidity)
-        bin_obj.battery_level   = data.get('battery_level',  bin_obj.battery_level)
-        bin_obj.signal_strength = data.get('signal_strength', bin_obj.signal_strength)
-        bin_obj.updated_at      = datetime.utcnow() # update the time of the last update
-
-        # Persist — no new row inserted
-        db.session.commit()
-
-        return jsonify({
-            'message': 'Sensor data received and fill level calculated',
-            'distance_cm': distance,
-            'container_height_cm': height,
-            'fill_level': fill_level,
-            'bin': bin_obj.to_dict()
-        }), 200
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-# API endpoints for full bins and driver bins
-@bin_api.route('/api/bins/full')
-def api_full_bins():
-    """API endpoint to get full bins data for task creation"""
-    if 'user_id' not in session or session['role'] not in ['admin', 'manager']:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    full_bins = Bin.query.filter(Bin.fill_level >= 80, Bin.status == 'active').all()
-    
-    bins_data = []
-    for bin_obj in full_bins:
-        bins_data.append({
-            'id': bin_obj.id,
-            'bin_id': bin_obj.bin_id,
-            'location': bin_obj.location,
-            'latitude': float(bin_obj.latitude),
-            'longitude': float(bin_obj.longitude),
-            'fill_level': bin_obj.fill_level,
-            'bin_type': bin_obj.bin_type,
-            'status': bin_obj.status,
-            'last_collected': bin_obj.last_collected.isoformat() if bin_obj.last_collected else None
-        })
-    
-    return jsonify({'bins': bins_data})
-
+        print("ERROR:", str(e))
+        return jsonify({"error": str(e)}), 500
+        
 @bin_api.route('/api/driver/bins')
 def api_driver_bins():
     """API endpoint to get bins for the current driver's tasks"""
