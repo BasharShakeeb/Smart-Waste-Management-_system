@@ -590,7 +590,7 @@ body {
       {% if active_tasks %}
       <div class="section-lbl"><i class="fas fa-play-circle"></i> {{ t('driverDashboard.currentTask') }}</div>
       {% for task in active_tasks %}
-      {{ render_task_card(task, expanded=true) }}
+      {{ render_task_card(task) }}
       {% endfor %}
       {% endif %}
 
@@ -598,7 +598,7 @@ body {
       {% if pending_tasks %}
       <div class="section-lbl"><i class="fas fa-clock"></i> {{ t('driverDashboard.upcoming') if t('driverDashboard.upcoming') != 'driverDashboard.upcoming' else 'Upcoming Tasks' }}</div>
       {% for task in pending_tasks %}
-      {{ render_task_card(task, expanded=false) }}
+      {{ render_task_card(task) }}
       {% endfor %}
       {% endif %}
 
