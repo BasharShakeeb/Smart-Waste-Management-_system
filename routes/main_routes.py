@@ -116,18 +116,19 @@ def driver_dashboard():
     
     # # Redirect drivers to main dashboard since driver-specific dashboard was removed
     # return redirect(url_for('main.dashboard'))
-    driver_id= session['user_id']
-    driver = Driver.query.filter_by(user_id=driver_id).first()
-    driverid = driver.id
+    user_id = session['user_id']
+    driver = Driver.query.filter_by(user_id=user_id).first()
+    if not driver:
+        flash('Driver profile not found. Please contact admin.', 'error')
+        return redirect(url_for('main.login'))
     driver.status = 'online'
-    driver.last_login = datetime.utcnow()
-    db.session.commit() 
-    task = Task.query.filter_by(driver_id=driverid).all()
-    task = [task.to_dict() for task in task]    
-    print(task)
-    print(driver_id)
+    driver.user.last_login = datetime.utcnow()
+    db.session.commit()
+    tasks = Task.query.filter_by(driver_id=driver.id).all()
+    tasks = [t.to_dict() for t in tasks]
+    print(f"[driver-dashboard] user_id={user_id}, driver_id={driver.id}, tasks={len(tasks)}")
 
-    return render_template('driver_dashboard.html', tasks=task) 
+    return render_template('driver_dashboard.html', tasks=tasks)
 
 # Reports functionality removed
 
