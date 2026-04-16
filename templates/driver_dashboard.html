@@ -448,6 +448,71 @@ body {
 {% endblock %}
 
 {% block content %}
+{# ── Task card macro – must be defined BEFORE first use ── #}
+{% macro render_task_card(task) %}
+<div class="task-card" id="taskCard_{{ task.id }}">
+  <div class="task-card-top">
+    <div>
+      <div class="task-card-id">#{{ task.task_id }}</div>
+      <div class="task-card-title">{{ task.title or t('driverDashboard.wasteCollection') }}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+      <span class="status-pill {{ task.status }}">
+        <i class="fas fa-circle" style="font-size:.5rem;"></i>
+        {% if task.status=='pending' %}Pending
+        {% elif task.status=='assigned' %}Assigned
+        {% elif task.status=='in_progress' %}In Progress
+        {% elif task.status=='completed' %}{{ t('driverDashboard.completedStatus') }}
+        {% else %}{{ task.status }}{% endif %}
+      </span>
+      <span class="priority-pill {{ task.priority or 'normal' }}">{{ task.priority or 'normal' }}</span>
+    </div>
+  </div>
+  <div class="task-meta">
+    <span class="task-meta-item"><i class="fas fa-trash-alt"></i> {{ task.total_bins or 0 }} {{ t('driverDashboard.bin') }}</span>
+    <span class="task-meta-item"><i class="fas fa-check-circle"></i> {{ task.completed_bins or 0 }} done</span>
+    {% if task.scheduled_time %}
+    <span class="task-meta-item"><i class="fas fa-clock"></i> {{ task.scheduled_time[11:16] }}</span>
+    {% endif %}
+    {% if task.estimated_distance %}
+    <span class="task-meta-item"><i class="fas fa-road"></i> {{ "%.1f"|format(task.estimated_distance) }} km</span>
+    {% endif %}
+    {% if task.estimated_duration %}
+    <span class="task-meta-item"><i class="fas fa-hourglass-half"></i> {{ task.estimated_duration }} min</span>
+    {% endif %}
+  </div>
+  {% if task.total_bins and task.total_bins > 0 %}
+  <div class="task-progress">
+    {% set pct = ((task.completed_bins or 0) / task.total_bins * 100)|int %}
+    <div class="progress-label">
+      <span>Progress</span>
+      <span>{{ pct }}%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" style="width:{{ pct }}%;"></div>
+    </div>
+  </div>
+  {% endif %}
+  <div class="task-actions">
+    {% if task.status in ['pending','assigned'] %}
+    <button class="btn-dd btn-start" onclick="startTask({{ task.id }})">
+      <i class="fas fa-play"></i> {{ t('driverDashboard.startTask') }}
+    </button>
+    {% elif task.status == 'in_progress' %}
+    <button class="btn-dd btn-outline" onclick="viewBins({{ task.id }})">
+      <i class="fas fa-list-ol"></i> Bins
+    </button>
+    <button class="btn-dd btn-complete" onclick="completeTask({{ task.id }})">
+      <i class="fas fa-check"></i> {{ t('driverDashboard.completeTask') }}
+    </button>
+    {% endif %}
+    <button class="btn-dd btn-outline" onclick="loadMapForTask({{ task.id }})" style="flex:0;padding:9px 12px;">
+      <i class="fas fa-map"></i>
+    </button>
+  </div>
+</div>
+{% endmacro %}
+
 <div class="dd-wrapper" id="ddWrapper">
 
   <!-- HEADER -->
@@ -649,70 +714,7 @@ body {
 <!-- Toast -->
 <div class="dd-toast" id="ddToast"></div>
 
-<!-- Jinja2 macro for task card -->
-{% macro render_task_card(task, expanded) %}
-<div class="task-card" id="taskCard_{{ task.id }}">
-  <div class="task-card-top">
-    <div>
-      <div class="task-card-id">#{{ task.task_id }}</div>
-      <div class="task-card-title">{{ task.title or t('driverDashboard.wasteCollection') }}</div>
-    </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
-      <span class="status-pill {{ task.status }}">
-        <i class="fas fa-circle" style="font-size:.5rem;"></i>
-        {% if task.status=='pending' %}{{ t('driverDashboard.pendingStatus') if t('driverDashboard.pendingStatus') != 'driverDashboard.pendingStatus' else 'Pending' }}
-        {% elif task.status=='assigned' %}Assigned
-        {% elif task.status=='in_progress' %}{{ t('driverDashboard.inProgressStatus') if t('driverDashboard.inProgressStatus') != 'driverDashboard.inProgressStatus' else 'In Progress' }}
-        {% elif task.status=='completed' %}{{ t('driverDashboard.completedStatus') }}{% endif %}
-      </span>
-      <span class="priority-pill {{ task.priority or 'normal' }}">{{ task.priority or 'normal' }}</span>
-    </div>
-  </div>
-  <div class="task-meta">
-    <span class="task-meta-item"><i class="fas fa-trash-alt"></i> {{ task.total_bins or 0 }} {{ t('driverDashboard.bin') }}</span>
-    <span class="task-meta-item"><i class="fas fa-check-circle"></i> {{ task.completed_bins or 0 }} done</span>
-    {% if task.scheduled_time %}
-    <span class="task-meta-item"><i class="fas fa-clock"></i> {{ task.scheduled_time[11:16] }}</span>
-    {% endif %}
-    {% if task.estimated_distance %}
-    <span class="task-meta-item"><i class="fas fa-road"></i> {{ "%.1f"|format(task.estimated_distance) }} km</span>
-    {% endif %}
-    {% if task.estimated_duration %}
-    <span class="task-meta-item"><i class="fas fa-hourglass-half"></i> {{ task.estimated_duration }} min</span>
-    {% endif %}
-  </div>
-  {% if task.total_bins and task.total_bins > 0 %}
-  <div class="task-progress">
-    {% set pct = ((task.completed_bins or 0) / task.total_bins * 100)|int %}
-    <div class="progress-label">
-      <span>{{ t('driverDashboard.progressLabel') if t('driverDashboard.progressLabel') != 'driverDashboard.progressLabel' else 'Progress' }}</span>
-      <span>{{ pct }}%</span>
-    </div>
-    <div class="progress-track">
-      <div class="progress-fill" style="width:{{ pct }}%;"></div>
-    </div>
-  </div>
-  {% endif %}
-  <div class="task-actions">
-    {% if task.status in ['pending','assigned'] %}
-    <button class="btn-dd btn-start" onclick="startTask({{ task.id }})">
-      <i class="fas fa-play"></i> {{ t('driverDashboard.startTask') }}
-    </button>
-    {% elif task.status == 'in_progress' %}
-    <button class="btn-dd btn-outline" onclick="viewBins({{ task.id }})">
-      <i class="fas fa-list-ol"></i> {{ t('driverDashboard.viewBins') if t('driverDashboard.viewBins') != 'driverDashboard.viewBins' else 'Bins' }}
-    </button>
-    <button class="btn-dd btn-complete" onclick="completeTask({{ task.id }})">
-      <i class="fas fa-check"></i> {{ t('driverDashboard.completeTask') }}
-    </button>
-    {% endif %}
-    <button class="btn-dd btn-outline" onclick="loadMapForTask({{ task.id }})" style="flex:0;padding:9px 12px;">
-      <i class="fas fa-map"></i>
-    </button>
-  </div>
-</div>
-{% endmacro %}
-
+</div><!-- /dd-wrapper -->
 {% endblock %}
 
 {% block extra_js %}
