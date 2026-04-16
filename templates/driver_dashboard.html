@@ -1,1285 +1,1076 @@
 {% extends "base.html" %}
 
 {% block extra_head %}
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 {% endblock %}
 
 {% block title %}{{ t('driverDashboard.title') }} - Collect Me IoT{% endblock %}
 
-{% block content %}
-<!-- Mobile-First Driver Interface -->
-<div class="driver-interface">
-    <!-- Header -->
-    <header class="driver-header">
-        <div class="container-fluid">
-            <div class="row align-items-center">
-                <div class="col-6">
-                    <div class="driver-info">
-                        <div class="driver-avatar">
-                            {{ session.name[0] if session.name else 'S' }}
-                        </div>
-                        <div class="driver-details">
-                            <h6 class="mb-0">{{ session.name if session.name else t('driverDashboard.driver') }}</h6>
-                            <small class="text-muted">{{ t('driverDashboard.activeDriver') }}</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 text-end">
-                    <div class="driver-status">
-                        <span class="status-indicator online"></span>
-                        <span class="status-text">{{ t('driverDashboard.connected') }}</span>
-                    </div>
-                    <button class="btn btn-outline-light btn-sm" onclick="logout()">
-                        <i class="fas fa-sign-out-alt"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Navigation Tabs -->
-    <nav class="driver-nav">
-        <div class="nav-tabs">
-            <button class="nav-tab active" onclick="showTab('tasks')">
-                <i class="fas fa-tasks"></i>
-                <span>{{ t('driverDashboard.tasks') }}</span>
-            </button>
-            <button class="nav-tab" onclick="showTab('map')">
-                <i class="fas fa-map"></i>
-                <span>{{ t('driverDashboard.map') }}</span>
-            </button>
-            <button class="nav-tab" onclick="showTab('history')">
-                <i class="fas fa-history"></i>
-                <span>{{ t('driverDashboard.history') }}</span>
-            </button>
-            <button class="nav-tab" onclick="showTab('profile')">
-                <i class="fas fa-user"></i>
-                <span>{{ t('driverDashboard.profile') }}</span>
-            </button>
-        </div>
-    </nav>
-<main class="driver-content">
-    <!-- Tasks Tab -->
-    <div id="tasksTab" class="tab-content active">
-        <!-- Current Task -->
-        <div class="current-task-section">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="fas fa-play-circle"></i> {{ t('driverDashboard.currentTask') }}
-                    </h6>
-                </div>
-                <div class="card-body">
-                    {% if tasks %}
-                        {% for task in tasks %}
-                        <div class="current-task">
-                            <div class="task-info">
-                                <h5>{{ task.task_id }} - {{ task.title or '' }}</h5>
-                                <p class="text-muted">{{ task.description or t('driverDashboard.wasteCollection') }}</p>
-                                <div class="task-stats">
-                                    <div class="stat-item">
-                                        <!-- استخدام total_bins لأن القاموس يحتوي عليه -->
-                                        <span class="stat-number">{{ task.total_bins or 0 }}</span>
-                                        <span class="stat-label">{{ t('driverDashboard.bin') }}</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span class="stat-number">{{ task.priority or 'normal' }}</span>
-                                        <span class="stat-label">{{ t('driverDashboard.priorityLabel') }}</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <!-- scheduled_time هنا سلسلة ISO مثل "2025-10-07T09:04:00" -->
-                                        <span class="stat-number">
-                                            {% if task.scheduled_time %}
-                                                {{ task.scheduled_time[11:16] }}
-                                            {% else %}
-                                                غير محدد
-                                            {% endif %}
-                                        </span>
-                                        <span class="stat-label">{{ t('driverDashboard.time') }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="task-actions">
-                                {% if task.status == 'pending' or task.status == 'assigned' %}
-                                <button class="btn btn-success btn-lg" onclick="startTask('{{ task.id }}')">
-                                    <i class="fas fa-play"></i> {{ t('driverDashboard.startTask') }}
-                                </button>
-                                {% elif task.status == 'in_progress' %}
-                                <button class="btn btn-warning btn-lg" onclick="pauseTask('{{ task.id }}')">
-                                    <i class="fas fa-pause"></i> {{ t('driverDashboard.pauseTask') }}
-                                </button>
-                                <button class="btn btn-primary btn-lg" onclick="completeTask('{{ task.id }}')">
-                                    <i class="fas fa-check"></i> {{ t('driverDashboard.completeTask') }}
-                                </button>
-                                {% elif task.status == 'completed' %}
-                                <button class="btn btn-outline-success btn-lg" disabled>
-                                    <i class="fas fa-check-circle"></i> {{ t('driverDashboard.completed') }}
-                                </button>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <hr>
-                        {% endfor %}
-                    {% else %}
-                        <div class="no-tasks">
-                            <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
-                            <h6>{{ t('driverDashboard.noTasks') }}</h6>
-                            <p class="text-muted">{{ t('driverDashboard.noTasksHint') }}</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- NOTE: Your provided task objects don't include task_bins.
-             If you later pass task.task_bins (قائمة الحاويات) inside كل مهمة,
-             you can re-enable a bins section similar to the original template. -->
-    </div>
-</main>
-
-
-            <!-- Quick Actions -->
-            <div class="quick-actions">
-                <div class="row">
-                    <div class="col-6">
-                        <button class="btn btn-outline-primary w-100" onclick="refreshTasks()">
-                            <i class="fas fa-sync-alt"></i> {{ t('driverDashboard.refreshBtn') }}
-                        </button>
-                    </div>
-                    <div class="col-6">
-                        <button class="btn btn-outline-info w-100" onclick="reportIssue()">
-                            <i class="fas fa-exclamation-triangle"></i> {{ t('driverDashboard.reportBtn') }}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Map Tab -->
-        <div id="mapTab" class="tab-content">
-            <div class="map-container">
-                <div class="map-header">
-                    <h6>{{ t('driverDashboard.taskMap') }}</h6>
-                    <div class="map-controls">
-                        <button class="btn btn-outline-primary btn-sm" onclick="centerMap()">
-                            <i class="fas fa-crosshairs"></i>
-                        </button>
-                        <button class="btn btn-outline-primary btn-sm" onclick="toggleMapLayers()">
-                            <i class="fas fa-layer-group"></i>
-                        </button>
-                    </div>
-                </div>
-                <div id="driverMap" class="map-view">
-                    <!-- Map will be initialized here -->
-                </div>
-                <div class="map-legend">
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #e74c3c;"></span>
-                        <span>{{ t('driverDashboard.fullBinsLegend') }}</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #f39c12;"></span>
-                        <span>{{ t('driverDashboard.halfFullBinsLegend') }}</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-color" style="background: #27ae60;"></span>
-                        <span>{{ t('driverDashboard.emptyBinsLegend') }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- History Tab -->
-        <div id="historyTab" class="tab-content">
-            <div class="history-section">
-                <div class="card">
-                    <div class="card-header">
-                        <h6 class="mb-0">
-                            <i class="fas fa-history"></i> {{ t('driverDashboard.taskHistory') }}
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="history-filters">
-                            <div class="row">
-                                <div class="col-6">
-                                    <select class="form-select form-select-sm" id="historyFilter">
-                                        <option value="all">{{ t('driverDashboard.allTasks') }}</option>
-                                        <option value="today">{{ t('driverDashboard.today') }}</option>
-                                        <option value="week">{{ t('driverDashboard.thisWeek') }}</option>
-                                        <option value="month">{{ t('driverDashboard.thisMonth') }}</option>
-                                    </select>
-                                </div>
-                                <div class="col-6">
-                                    <select class="form-select form-select-sm" id="statusFilter">
-                                        <option value="all">{{ t('common.allStatuses') }}</option>
-                                        <option value="completed">{{ t('driverDashboard.completedStatus') }}</option>
-                                        <option value="cancelled">{{ t('driverDashboard.cancelledStatus') }}</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="history-list">
-                            {% if completed_tasks %}
-                                {% for task in completed_tasks %}
-                                <div class="history-item">
-                                    <div class="history-info">
-                                        <h6>{{ task.task_id }}</h6>
-                                        <p class="text-muted">{{ task.task_bins|length if task.task_bins else 0 }} {{ t('driverDashboard.bin') }} - {{ task.route_name or task.title or t('driverDashboard.wasteCollectionTask') }}</p>
-                                        <small class="text-success">
-                                            <i class="fas fa-check-circle"></i> {{ t('driverDashboard.completedStatus') }}
-                                        </small>
-                                    </div>
-                                    <div class="history-details">
-                                        <div class="history-time">{{ task.completed_time.strftime('%Y-%m-%d') if task.completed_time else task.scheduled_time.strftime('%Y-%m-%d') if task.scheduled_time else 'غير محدد' }}</div>
-                                        <div class="history-duration">{{ ((task.task_bins|length) * 0.25)|round(1) if task.task_bins else 0.5 }} {{ t('driverDashboard.hour') }}</div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            {% else %}
-                                <div class="text-center py-4">
-                                    <i class="fas fa-history fa-3x text-muted mb-3"></i>
-                                    <h6>{{ t('driverDashboard.noHistory') }}</h6>
-                                    <p class="text-muted">{{ t('driverDashboard.noHistoryHint') }}</p>
-                                </div>
-                            {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Profile Tab -->
-        <div id="profileTab" class="tab-content">
-            <div class="profile-section">
-                <div class="card">
-                    <div class="card-header">
-                        <h6 class="mb-0">
-                            <i class="fas fa-user"></i> {{ t('driverDashboard.profileSection') }}
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="profile-info">
-                            <div class="profile-avatar">
-                                {{ session.name[0] if session.name else 'S' }}
-                            </div>
-                            <div class="profile-details">
-                                <h5>{{ session.name if session.name else t('driverDashboard.driver') }}</h5>
-                                <p class="text-muted">{{ session.username if session.username else 'sarah@collectme.com' }}</p>
-                            </div>
-                        </div>
-                        
-                        <div class="profile-stats">
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-tasks"></i>
-                                </div>
-                                <div class="stat-info">
-                                    <div class="stat-number">{{ task_stats.completed if task_stats else 0 }}</div>
-                                    <div class="stat-label">{{ t('driverDashboard.completedTasksStat') }}</div>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-clock"></i>
-                                </div>
-                                <div class="stat-info">
-                                    <div class="stat-number">{{ task_stats.total_hours if task_stats else 0 }}</div>
-                                    <div class="stat-label">{{ t('driverDashboard.workHours') }}</div>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-star"></i>
-                                </div>
-                                <div class="stat-info">
-                                    <div class="stat-number">{{ (task_stats.rating / 10)|round(1) if task_stats and task_stats.rating > 0 else '0.0' }}</div>
-                                    <div class="stat-label">{{ t('driverDashboard.ratingLabel') }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="profile-actions">
-                            <button class="btn btn-outline-primary w-100 mb-2" onclick="editProfile()">
-                                <i class="fas fa-edit"></i> {{ t('driverDashboard.editProfile') }}
-                            </button>
-                            <button class="btn btn-outline-secondary w-100 mb-2" onclick="changePassword()">
-                                <i class="fas fa-key"></i> {{ t('driverDashboard.changePassword') }}
-                            </button>
-                            <button class="btn btn-outline-info w-100" onclick="contactSupport()">
-                                <i class="fas fa-headset"></i> {{ t('driverDashboard.techSupport') }}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Bottom Action Bar -->
-    <div class="bottom-action-bar">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-4">
-                    <button class="action-btn" onclick="emergencyCall()">
-                        <i class="fas fa-phone"></i>
-                        <span>{{ t('driverDashboard.emergency') }}</span>
-                    </button>
-                </div>
-                <div class="col-4">
-                    <button class="action-btn" onclick="reportLocation()">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span>{{ t('driverDashboard.myLocation') }}</span>
-                    </button>
-                </div>
-                <div class="col-4">
-                    <button class="action-btn" onclick="quickMessage()">
-                        <i class="fas fa-comment"></i>
-                        <span>{{ t('driverDashboard.message') }}</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
 {% block extra_css %}
 <style>
-/* Mobile-First Driver Interface Styles */
-.driver-interface {
-    min-height: 100vh;
-    background: #f8f9fa;
-    padding-bottom: 80px; /* Space for bottom action bar */
+:root {
+  --primary: #00b894;
+  --primary-dark: #00a381;
+  --primary-light: #e8fdf5;
+  --accent: #6c5ce7;
+  --warning: #fdcb6e;
+  --warning-dark: #e17055;
+  --danger: #d63031;
+  --info: #0984e3;
+  --surface: #ffffff;
+  --surface-2: #f7f8fc;
+  --border: #e8ecf0;
+  --text-main: #1a1d23;
+  --text-muted: #8892a0;
+  --text-light: #b2bec3;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 4px 24px rgba(0,0,0,.07);
+  --shadow-sm: 0 2px 10px rgba(0,0,0,.05);
+  --trans: all .25s cubic-bezier(.4,0,.2,1);
 }
 
-.driver-header {
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    color: white;
-    padding: 1rem;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: {% if locale=='ar' %}'Cairo'{% else %}'Inter'{% endif %}, sans-serif;
+  background: var(--surface-2);
+  color: var(--text-main);
+  overscroll-behavior: none;
 }
 
-.driver-info {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
+/* ── LAYOUT ── */
+.dd-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--surface-2);
+  position: relative;
+  overflow: hidden;
 }
 
-.driver-avatar {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 1.2rem;
+/* ── HEADER ── */
+.dd-header {
+  background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+  padding: 14px 18px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  z-index: 100;
+  flex-shrink: 0;
 }
 
-.driver-status {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
+.dd-driver-info { display: flex; align-items: center; gap: 11px; }
+
+.dd-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.25);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.25rem; font-weight: 700; color: #fff;
+  border: 2px solid rgba(255,255,255,.4);
+  flex-shrink: 0;
 }
 
-.status-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    animation: pulse 2s infinite;
+.dd-driver-name { color:#fff; font-weight:700; font-size:.95rem; line-height:1.2; }
+.dd-driver-role {
+  color: rgba(255,255,255,.8);
+  font-size:.72rem;
+  display:flex; align-items:center; gap:5px;
+}
+.dd-online-dot {
+  width:7px; height:7px; border-radius:50%;
+  background:#a8e6cf;
+  box-shadow: 0 0 0 2px rgba(168,230,207,.4);
+  animation: breathe 2s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%,100% { opacity:1; transform:scale(1); }
+  50% { opacity:.6; transform:scale(.85); }
 }
 
-.status-indicator.online {
-    background: #27ae60;
+.dd-header-actions { display:flex; align-items:center; gap:8px; }
+
+.dd-icon-btn {
+  width:36px; height:36px; border-radius:50%;
+  background: rgba(255,255,255,.2);
+  border: none; color:#fff; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.85rem;
+  transition: var(--trans);
+}
+.dd-icon-btn:hover { background: rgba(255,255,255,.35); }
+
+/* ── STATS BAR ── */
+.dd-stats {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  background: var(--surface);
+  padding: 10px 14px;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink:0;
+}
+.dd-stat {
+  text-align:center;
+  padding: 6px 0;
+}
+.dd-stat-val {
+  font-size:1.3rem; font-weight:700; color: var(--text-main);
+  line-height:1;
+}
+.dd-stat-lbl {
+  font-size:.68rem; color: var(--text-muted);
+  margin-top:2px;
+  white-space:nowrap;
 }
 
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
+/* ── NAV TABS ── */
+.dd-nav {
+  background: var(--surface);
+  display:flex;
+  border-bottom: 2px solid var(--border);
+  flex-shrink:0;
+}
+.dd-nav-btn {
+  flex:1; border:none; background:none;
+  padding: 11px 4px 9px;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  color: var(--text-muted); font-size:.68rem; font-weight:600;
+  cursor:pointer; transition: var(--trans);
+  position:relative;
+}
+.dd-nav-btn i { font-size:1.05rem; }
+.dd-nav-btn.active { color: var(--primary); }
+.dd-nav-btn.active::after {
+  content:''; position:absolute; bottom:-2px; left:15%; right:15%;
+  height:2px; background: var(--primary); border-radius:2px;
+}
+.dd-badge {
+  position:absolute; top:6px;
+  background:var(--danger); color:#fff;
+  font-size:.55rem; font-weight:700;
+  padding:1px 5px; border-radius:10px;
+  line-height:1.4;
+}
+{% if locale=='ar' %}.dd-badge{right:8px;}{% else %}.dd-badge{right:8px;}{% endif %}
+
+/* ── CONTENT AREA ── */
+.dd-content {
+  flex:1; overflow-y:auto;
+  padding: 14px;
+  scroll-behavior:smooth;
+  -webkit-overflow-scrolling: touch;
+}
+.dd-tab { display:none; }
+.dd-tab.active { display:block; }
+
+/* ── CARD ── */
+.dd-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  margin-bottom:14px;
+  overflow:hidden;
+}
+.dd-card-head {
+  padding:13px 16px 11px;
+  display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid var(--border);
+}
+.dd-card-title {
+  font-size:.85rem; font-weight:700;
+  display:flex; align-items:center; gap:8px;
+}
+.dd-card-title i { color: var(--primary); }
+.dd-card-body { padding:14px 16px; }
+
+/* ── STATUS PILL ── */
+.status-pill {
+  padding:3px 10px; border-radius:20px;
+  font-size:.68rem; font-weight:700;
+  display:inline-flex; align-items:center; gap:4px;
+  white-space:nowrap;
+}
+.status-pill.pending  { background:#fff3cd; color:#856404; }
+.status-pill.assigned { background:#cfe2ff; color:#0a58ca; }
+.status-pill.in_progress{ background:#d1e7dd; color:#0a3622; }
+.status-pill.completed  { background:#e2e3e5; color:#41464b; }
+.status-pill.cancelled  { background:#f8d7da; color:#842029; }
+
+/* Priority */
+.priority-pill {
+  padding:2px 8px; border-radius:20px;
+  font-size:.65rem; font-weight:700;
+}
+.priority-pill.low { background:#e8f5e9; color:#2e7d32; }
+.priority-pill.normal { background:#e3f2fd; color:#1565c0; }
+.priority-pill.high { background:#fff3e0; color:#e65100; }
+.priority-pill.urgent { background:#fce4ec; color:#b71c1c; }
+
+/* ── TASK CARD ── */
+.task-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  margin-bottom:12px;
+  overflow:hidden;
+  border: 1.5px solid var(--border);
+  transition: var(--trans);
+}
+.task-card:hover { box-shadow: var(--shadow); transform:translateY(-1px); }
+
+.task-card-top {
+  padding:12px 14px 10px;
+  display:flex; align-items:flex-start; justify-content:space-between; gap:8px;
+}
+.task-card-id {
+  font-size:.72rem; font-weight:700; color: var(--text-muted);
+  letter-spacing:.5px;
+}
+.task-card-title {
+  font-size:.88rem; font-weight:700; margin-top:2px;
+  color: var(--text-main);
 }
 
-.driver-nav {
-    background: white;
-    border-bottom: 1px solid #e9ecef;
-    position: sticky;
-    top: 80px;
-    z-index: 999;
+.task-meta {
+  display:flex; flex-wrap:wrap; gap:8px;
+  padding: 0 14px 10px;
+}
+.task-meta-item {
+  display:flex; align-items:center; gap:4px;
+  font-size:.72rem; color: var(--text-muted);
+}
+.task-meta-item i { color: var(--primary); font-size:.75rem; }
+
+/* Progress bar */
+.task-progress { padding:0 14px 12px; }
+.progress-label {
+  display:flex; justify-content:space-between;
+  font-size:.7rem; color: var(--text-muted); margin-bottom:5px;
+}
+.progress-track {
+  height:6px; border-radius:6px;
+  background: var(--border);
+  overflow:hidden;
+}
+.progress-fill {
+  height:100%; border-radius:6px;
+  background: linear-gradient(90deg, var(--primary), #00cec9);
+  transition: width .6s ease;
 }
 
-.nav-tabs {
-    display: flex;
-    justify-content: space-around;
-    padding: 0.5rem 0;
-}
-
-.nav-tab {
-    background: none;
-    border: none;
-    padding: 0.5rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    color: #6c757d;
-    transition: all 0.3s ease;
-    border-radius: 8px;
-}
-
-.nav-tab.active {
-    color: #3498db;
-    background: rgba(52, 152, 219, 0.1);
-}
-
-.nav-tab i {
-    font-size: 1.2rem;
-}
-
-.nav-tab span {
-    font-size: 0.8rem;
-    font-weight: 500;
-}
-
-.driver-content {
-    padding: 1rem;
-}
-
-.tab-content {
-    display: none;
-}
-
-.tab-content.active {
-    display: block;
-}
-
-/* Current Task Styles */
-.current-task {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    padding: 1rem;
-    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-    border-radius: 12px;
-    margin-bottom: 1rem;
-}
-
-.task-stats {
-    display: flex;
-    gap: 1rem;
-    margin-top: 0.5rem;
-}
-
-.stat-item {
-    text-align: center;
-}
-
-.stat-number {
-    display: block;
-    font-weight: bold;
-    color: #3498db;
-}
-
-.stat-label {
-    font-size: 0.8rem;
-    color: #6c757d;
-}
-
+/* Task actions */
 .task-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+  padding:10px 14px 12px;
+  display:flex; gap:8px;
+  border-top: 1px solid var(--border);
 }
-
-.no-tasks {
-    text-align: center;
-    padding: 2rem;
+.btn-dd {
+  border:none; border-radius:var(--radius-sm);
+  padding:9px 14px;
+  font-size:.8rem; font-weight:700;
+  cursor:pointer; transition: var(--trans);
+  display:flex; align-items:center; gap:6px;
+  flex:1; justify-content:center;
 }
-
-/* Bin Items */
-.bin-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    padding: 1rem;
-    border-bottom: 1px solid #e9ecef;
-    transition: all 0.3s ease;
+.btn-dd:active { transform:scale(.97); }
+.btn-start { background: var(--primary); color:#fff; }
+.btn-start:hover { background: var(--primary-dark); }
+.btn-complete { background: var(--info); color:#fff; }
+.btn-complete:hover { background: #0772c4; }
+.btn-outline {
+  background: var(--surface-2);
+  color: var(--text-main);
+  border: 1.5px solid var(--border);
 }
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-danger-soft { background:#fce4ec; color:var(--danger); }
+.btn-dd:disabled { opacity:.5; cursor:not-allowed; transform:none; }
 
-.bin-item:last-child {
-    border-bottom: none;
+/* ── BIN LIST ── */
+.bin-list { display:flex; flex-direction:column; gap:0; }
+.bin-row {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 16px;
+  border-bottom:1px solid var(--border);
+  transition: var(--trans);
+  cursor:pointer;
 }
+.bin-row:last-child { border-bottom:none; }
+.bin-row:hover { background: var(--primary-light); }
+.bin-row.collected { opacity:.55; }
 
-.bin-item:hover {
-    background: rgba(52, 152, 219, 0.05);
+.bin-seq {
+  width:28px; height:28px; border-radius:50%;
+  background: var(--primary); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.75rem; font-weight:700; flex-shrink:0;
 }
+.bin-seq.done { background: var(--text-light); }
 
-.bin-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
+.bin-row-info { flex:1; min-width:0; }
+.bin-row-id { font-size:.78rem; font-weight:700; color: var(--text-main); }
+.bin-row-loc { font-size:.7rem; color: var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.fill-chip {
+  padding:2px 8px; border-radius:10px;
+  font-size:.68rem; font-weight:700;
+  flex-shrink:0;
 }
+.fill-chip.low  { background:#e8f5e9; color:#2e7d32; }
+.fill-chip.mid  { background:#fff3e0; color:#e65100; }
+.fill-chip.high { background:#fce4ec; color:#b71c1c; }
 
-.bin-id {
-    margin: 0;
-    font-size: 1rem;
+.bin-row-action {
+  width:30px; height:30px; border-radius:50%;
+  border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.8rem; flex-shrink:0;
+  transition: var(--trans);
 }
+.bin-row-action.nav { background:#e3f2fd; color:var(--info); }
+.bin-row-action.nav:hover { background:var(--info); color:#fff; }
+.bin-row-action.collect { background:#e8f5e9; color:var(--primary); }
+.bin-row-action.collect:hover { background:var(--primary); color:#fff; }
+.bin-row-action.done-btn { background:#f1f3f5; color:var(--text-light); cursor:default; }
 
-.bin-status {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    font-weight: 500;
+/* Route summary card */
+.route-summary {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:8px; margin-bottom:12px;
 }
-
-.bin-status.pending {
-    background: rgba(243, 156, 18, 0.1);
-    color: #f39c12;
+.route-summary-item {
+  background: var(--surface);
+  border-radius:var(--radius-sm);
+  padding:10px 8px;
+  text-align:center;
+  border:1.5px solid var(--border);
 }
-
-.bin-status.collected {
-    background: rgba(39, 174, 96, 0.1);
-    color: #27ae60;
+.route-summary-val {
+  font-size:1rem; font-weight:700;
+  color: var(--primary);
 }
+.route-summary-lbl { font-size:.65rem; color:var(--text-muted); margin-top:2px; }
 
-.bin-location {
-    margin: 0 0 0.5rem 0;
-    color: #6c757d;
-    font-size: 0.9rem;
-}
-
-.bin-details {
-    display: flex;
-    gap: 1rem;
-    font-size: 0.8rem;
-    color: #6c757d;
-}
-
-.bin-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-/* Map Styles */
-.map-container {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.map-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    padding: 1rem;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.map-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.map-view {
-    height: 400px;
-    width: 100%;
-    background: #f8f9fa;
-}
-
+/* ── MAP ── */
 #driverMap {
-    height: 100%;
-    width: 100%;
-    border-radius: 0 0 12px 12px;
+  height:360px; border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow:hidden;
 }
 
-.user-location-marker {
-    background: transparent;
-    border: none;
-    text-align: center;
+/* ── HISTORY CARD ── */
+.hist-item {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 16px;
+  border-bottom:1px solid var(--border);
+}
+.hist-item:last-child { border-bottom:none; }
+.hist-icon {
+  width:36px; height:36px; border-radius:50%;
+  background: #e8fdf5; color: var(--primary);
+  display:flex; align-items:center; justify-content:center;
+  font-size:.9rem; flex-shrink:0;
+}
+.hist-info { flex:1; min-width:0; }
+.hist-id { font-size:.78rem; font-weight:700; }
+.hist-sub { font-size:.7rem; color: var(--text-muted); }
+.hist-meta { text-align: end; }
+.hist-date { font-size:.72rem; font-weight:600; color:var(--text-main); }
+.hist-dur  { font-size:.68rem; color:var(--text-muted); }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align:center; padding:40px 20px;
+  color: var(--text-muted);
+}
+.empty-state i { font-size:2.8rem; margin-bottom:14px; color:var(--text-light); }
+.empty-state h6 { font-weight:700; color:var(--text-main); margin-bottom:6px; }
+.empty-state p { font-size:.82rem; }
+
+/* ── BOTTOM BAR ── */
+.dd-bottom {
+  background: var(--surface);
+  border-top: 1.5px solid var(--border);
+  display:flex; padding:8px 14px 10px;
+  gap:8px; flex-shrink:0;
+}
+.dd-bottom .btn-dd { flex:1; }
+
+/* ── TOAST ── */
+.dd-toast {
+  position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:#2d3436; color:#fff;
+  padding:10px 20px; border-radius:var(--radius-sm);
+  font-size:.8rem; font-weight:600;
+  opacity:0; transition: var(--trans);
+  z-index:9999; white-space:nowrap;
+  pointer-events:none;
+}
+.dd-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ── SPINNER ── */
+.spin { animation: spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Loading overlay */
+.dd-loading {
+  position:absolute; inset:0;
+  background: rgba(255,255,255,.8);
+  display:none; place-items:center;
+  z-index:500; border-radius: var(--radius);
+}
+.dd-loading.show { display:grid; }
+
+/* ── SECTION LABEL ── */
+.section-lbl {
+  font-size:.72rem; font-weight:700;
+  color: var(--text-muted); letter-spacing:.5px;
+  text-transform:uppercase;
+  margin:14px 0 8px;
 }
 
-.map-placeholder {
-    text-align: center;
-    color: #6c757d;
-}
+/* ── Leaflet popup override ── */
+.leaflet-popup-content { font-family: inherit; font-size:.82rem; }
 
-.map-legend {
-    display: flex;
-    justify-content: space-around;
-    padding: 1rem;
-    background: #f8f9fa;
-    border-top: 1px solid #e9ecef;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.8rem;
-}
-
-.legend-color {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-}
-
-/* History Styles */
-.history-filters {
-    margin-bottom: 1rem;
-}
-
-.history-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    padding: 1rem;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.history-item:last-child {
-    border-bottom: none;
-}
-
-.history-details {
-    text-align: start;
-}
-
-.history-time {
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
-.history-duration {
-    font-size: 0.8rem;
-    color: #6c757d;
-}
-
-/* Profile Styles */
-.profile-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-
-.profile-avatar {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    font-size: 1.5rem;
-}
-
-.profile-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-
-.stat-card {
-    background: #f8f9fa;
-    padding: 1rem;
-    border-radius: 12px;
-    text-align: center;
-}
-
-.stat-icon {
-    color: #3498db;
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.stat-number {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #2c3e50;
-}
-
-.stat-label {
-    font-size: 0.8rem;
-    color: #6c757d;
-}
-
-/* Quick Actions */
-.quick-actions {
-    margin-top: 1rem;
-}
-
-/* Bottom Action Bar */
-.bottom-action-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: white;
-    border-top: 1px solid #e9ecef;
-    padding: 0.5rem 0;
-    z-index: 1000;
-}
-
-.action-btn {
-    background: none;
-    border: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.5rem;
-    color: #6c757d;
-    transition: all 0.3s ease;
-    border-radius: 8px;
-    width: 100%;
-}
-
-.action-btn:hover {
-    color: #3498db;
-    background: rgba(52, 152, 219, 0.1);
-}
-
-.action-btn i {
-    font-size: 1.2rem;
-}
-
-.action-btn span {
-    font-size: 0.7rem;
-    font-weight: 500;
-}
-
-/* Responsive Design */
-@media (min-width: 768px) {
-    .driver-interface {
-        max-width: 400px;
-        margin: 0 auto;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-    }
-    
-    .driver-content {
-        padding: 1.5rem;
-    }
-    
-    .profile-stats {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-/* Button Styles */
-.btn {
-    border-radius: 8px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-.btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.btn-lg {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-}
-
-.btn-sm {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8rem;
-}
+/* ── Scrollbar ── */
+.dd-content::-webkit-scrollbar { width:4px; }
+.dd-content::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
 </style>
+{% endblock %}
+
+{% block content %}
+<div class="dd-wrapper" id="ddWrapper">
+
+  <!-- HEADER -->
+  <header class="dd-header">
+    <div class="dd-driver-info">
+      <div class="dd-avatar">{{ session.name[0] if session.name else 'S' }}</div>
+      <div>
+        <div class="dd-driver-name">{{ session.name or t('driverDashboard.driver') }}</div>
+        <div class="dd-driver-role">
+          <span class="dd-online-dot"></span>
+          {{ t('driverDashboard.activeDriver') }}
+        </div>
+      </div>
+    </div>
+    <div class="dd-header-actions">
+      <button class="dd-icon-btn" onclick="refreshDashboard()" title="Refresh">
+        <i class="fas fa-sync-alt" id="refreshIcon"></i>
+      </button>
+      <button class="dd-icon-btn" onclick="logout()" title="Logout">
+        <i class="fas fa-sign-out-alt"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- STATS BAR -->
+  <div class="dd-stats">
+    <div class="dd-stat">
+      <div class="dd-stat-val" id="statActive">{{ tasks | selectattr('status','in',['pending','assigned','in_progress']) | list | length }}</div>
+      <div class="dd-stat-lbl">{{ t('driverDashboard.active') }}</div>
+    </div>
+    <div class="dd-stat">
+      <div class="dd-stat-val" id="statCompleted">{{ tasks | selectattr('status','equalto','completed') | list | length }}</div>
+      <div class="dd-stat-lbl">{{ t('driverDashboard.completed') }}</div>
+    </div>
+    <div class="dd-stat">
+      <div class="dd-stat-val" id="statBins">{{ tasks | sum(attribute='total_bins') }}</div>
+      <div class="dd-stat-lbl">{{ t('driverDashboard.bin') }}</div>
+    </div>
+  </div>
+
+  <!-- NAV TABS -->
+  <nav class="dd-nav">
+    <button class="dd-nav-btn active" id="navTasks" onclick="showTab('tasks',this)">
+      <i class="fas fa-clipboard-list"></i>
+      {{ t('driverDashboard.tasks') }}
+      {% set active_count = tasks | selectattr('status','in',['pending','assigned','in_progress']) | list | length %}
+      {% if active_count > 0 %}
+      <span class="dd-badge">{{ active_count }}</span>
+      {% endif %}
+    </button>
+    <button class="dd-nav-btn" id="navMap" onclick="showTab('map',this)">
+      <i class="fas fa-map-marked-alt"></i>
+      {{ t('driverDashboard.map') }}
+    </button>
+    <button class="dd-nav-btn" id="navHistory" onclick="showTab('history',this)">
+      <i class="fas fa-history"></i>
+      {{ t('driverDashboard.history') }}
+    </button>
+    <button class="dd-nav-btn" id="navProfile" onclick="showTab('profile',this)">
+      <i class="fas fa-user-circle"></i>
+      {{ t('driverDashboard.profile') }}
+    </button>
+  </nav>
+
+  <!-- CONTENT -->
+  <div class="dd-content">
+
+    <!-- ===== TASKS TAB ===== -->
+    <div class="dd-tab active" id="tabTasks">
+      {% set active_tasks = tasks | selectattr('status','in',['in_progress']) | list %}
+      {% set pending_tasks = tasks | selectattr('status','in',['pending','assigned']) | list %}
+      {% set done_tasks = tasks | selectattr('status','equalto','completed') | list %}
+
+      <!-- Active / In-Progress -->
+      {% if active_tasks %}
+      <div class="section-lbl"><i class="fas fa-play-circle"></i> {{ t('driverDashboard.currentTask') }}</div>
+      {% for task in active_tasks %}
+      {{ render_task_card(task, expanded=true) }}
+      {% endfor %}
+      {% endif %}
+
+      <!-- Pending/Assigned -->
+      {% if pending_tasks %}
+      <div class="section-lbl"><i class="fas fa-clock"></i> {{ t('driverDashboard.upcoming') if t('driverDashboard.upcoming') != 'driverDashboard.upcoming' else 'Upcoming Tasks' }}</div>
+      {% for task in pending_tasks %}
+      {{ render_task_card(task, expanded=false) }}
+      {% endfor %}
+      {% endif %}
+
+      {% if not active_tasks and not pending_tasks %}
+      <div class="empty-state">
+        <i class="fas fa-clipboard-check"></i>
+        <h6>{{ t('driverDashboard.noTasks') }}</h6>
+        <p>{{ t('driverDashboard.noTasksHint') }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ===== MAP TAB ===== -->
+    <div class="dd-tab" id="tabMap">
+      <div class="route-summary" id="routeSummary" style="display:none;">
+        <div class="route-summary-item">
+          <div class="route-summary-val" id="sumDist">—</div>
+          <div class="route-summary-lbl">كم</div>
+        </div>
+        <div class="route-summary-item">
+          <div class="route-summary-val" id="sumTime">—</div>
+          <div class="route-summary-lbl">{{ t('driverDashboard.minute') if t('driverDashboard.minute') != 'driverDashboard.minute' else 'min' }}</div>
+        </div>
+        <div class="route-summary-item">
+          <div class="route-summary-val" id="sumBins">—</div>
+          <div class="route-summary-lbl">{{ t('driverDashboard.bin') }}</div>
+        </div>
+      </div>
+      <div id="driverMap"></div>
+    </div>
+
+    <!-- ===== HISTORY TAB ===== -->
+    <div class="dd-tab" id="tabHistory">
+      {% set done_tasks = tasks | selectattr('status','equalto','completed') | list %}
+      {% if done_tasks %}
+      <div class="dd-card">
+        <div class="dd-card-head">
+          <div class="dd-card-title"><i class="fas fa-history"></i> {{ t('driverDashboard.taskHistory') }}</div>
+          <span class="status-pill completed">{{ done_tasks | length }}</span>
+        </div>
+        <div class="hist-list">
+          {% for task in done_tasks %}
+          <div class="hist-item">
+            <div class="hist-icon"><i class="fas fa-check"></i></div>
+            <div class="hist-info">
+              <div class="hist-id">{{ task.task_id }}</div>
+              <div class="hist-sub">{{ task.total_bins or 0 }} {{ t('driverDashboard.bin') }} — {{ task.route_name or task.title or t('driverDashboard.wasteCollectionTask') }}</div>
+            </div>
+            <div class="hist-meta">
+              <div class="hist-date">
+                {% if task.completed_time %}{{ task.completed_time[:10] }}{% elif task.scheduled_time %}{{ task.scheduled_time[:10] }}{% else %}—{% endif %}
+              </div>
+              <div class="hist-dur">{{ task.actual_duration or '—' }} min</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <i class="fas fa-history"></i>
+        <h6>{{ t('driverDashboard.noHistory') }}</h6>
+        <p>{{ t('driverDashboard.noHistoryHint') }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ===== PROFILE TAB ===== -->
+    <div class="dd-tab" id="tabProfile">
+      <div class="dd-card">
+        <div class="dd-card-body">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+            <div class="dd-avatar" style="width:60px;height:60px;font-size:1.5rem;background:linear-gradient(135deg,var(--primary),var(--accent));border:none;">
+              {{ session.name[0] if session.name else 'S' }}
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:1.05rem;">{{ session.name or t('driverDashboard.driver') }}</div>
+              <div style="font-size:.78rem;color:var(--text-muted);">{{ session.username or '' }}</div>
+            </div>
+          </div>
+          <div class="route-summary" style="margin-bottom:20px;">
+            <div class="route-summary-item">
+              <div class="route-summary-val" id="proCompleted">{{ tasks | selectattr('status','equalto','completed') | list | length }}</div>
+              <div class="route-summary-lbl">{{ t('driverDashboard.completedTasksStat') }}</div>
+            </div>
+            <div class="route-summary-item">
+              <div class="route-summary-val">{{ tasks | sum(attribute='total_bins') }}</div>
+              <div class="route-summary-lbl">{{ t('driverDashboard.bin') }}</div>
+            </div>
+            <div class="route-summary-item">
+              <div class="route-summary-val">5.0 ⭐</div>
+              <div class="route-summary-lbl">{{ t('driverDashboard.ratingLabel') }}</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="btn-dd btn-outline" onclick="reportLocation()">
+              <i class="fas fa-map-marker-alt"></i> {{ t('driverDashboard.myLocation') }}
+            </button>
+            <button class="btn-dd btn-outline" onclick="reportIssue()">
+              <i class="fas fa-exclamation-triangle"></i> {{ t('driverDashboard.reportBtn') }}
+            </button>
+            <button class="btn-dd btn-danger-soft" onclick="logout()">
+              <i class="fas fa-sign-out-alt"></i> {{ t('driverDashboard.logout') if t('driverDashboard.logout') != 'driverDashboard.logout' else 'Logout' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /dd-content -->
+</div><!-- /dd-wrapper -->
+
+<!-- Toast -->
+<div class="dd-toast" id="ddToast"></div>
+
+<!-- Jinja2 macro for task card -->
+{% macro render_task_card(task, expanded) %}
+<div class="task-card" id="taskCard_{{ task.id }}">
+  <div class="task-card-top">
+    <div>
+      <div class="task-card-id">#{{ task.task_id }}</div>
+      <div class="task-card-title">{{ task.title or t('driverDashboard.wasteCollection') }}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+      <span class="status-pill {{ task.status }}">
+        <i class="fas fa-circle" style="font-size:.5rem;"></i>
+        {% if task.status=='pending' %}{{ t('driverDashboard.pendingStatus') if t('driverDashboard.pendingStatus') != 'driverDashboard.pendingStatus' else 'Pending' }}
+        {% elif task.status=='assigned' %}Assigned
+        {% elif task.status=='in_progress' %}{{ t('driverDashboard.inProgressStatus') if t('driverDashboard.inProgressStatus') != 'driverDashboard.inProgressStatus' else 'In Progress' }}
+        {% elif task.status=='completed' %}{{ t('driverDashboard.completedStatus') }}{% endif %}
+      </span>
+      <span class="priority-pill {{ task.priority or 'normal' }}">{{ task.priority or 'normal' }}</span>
+    </div>
+  </div>
+  <div class="task-meta">
+    <span class="task-meta-item"><i class="fas fa-trash-alt"></i> {{ task.total_bins or 0 }} {{ t('driverDashboard.bin') }}</span>
+    <span class="task-meta-item"><i class="fas fa-check-circle"></i> {{ task.completed_bins or 0 }} done</span>
+    {% if task.scheduled_time %}
+    <span class="task-meta-item"><i class="fas fa-clock"></i> {{ task.scheduled_time[11:16] }}</span>
+    {% endif %}
+    {% if task.estimated_distance %}
+    <span class="task-meta-item"><i class="fas fa-road"></i> {{ "%.1f"|format(task.estimated_distance) }} km</span>
+    {% endif %}
+    {% if task.estimated_duration %}
+    <span class="task-meta-item"><i class="fas fa-hourglass-half"></i> {{ task.estimated_duration }} min</span>
+    {% endif %}
+  </div>
+  {% if task.total_bins and task.total_bins > 0 %}
+  <div class="task-progress">
+    {% set pct = ((task.completed_bins or 0) / task.total_bins * 100)|int %}
+    <div class="progress-label">
+      <span>{{ t('driverDashboard.progressLabel') if t('driverDashboard.progressLabel') != 'driverDashboard.progressLabel' else 'Progress' }}</span>
+      <span>{{ pct }}%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" style="width:{{ pct }}%;"></div>
+    </div>
+  </div>
+  {% endif %}
+  <div class="task-actions">
+    {% if task.status in ['pending','assigned'] %}
+    <button class="btn-dd btn-start" onclick="startTask({{ task.id }})">
+      <i class="fas fa-play"></i> {{ t('driverDashboard.startTask') }}
+    </button>
+    {% elif task.status == 'in_progress' %}
+    <button class="btn-dd btn-outline" onclick="viewBins({{ task.id }})">
+      <i class="fas fa-list-ol"></i> {{ t('driverDashboard.viewBins') if t('driverDashboard.viewBins') != 'driverDashboard.viewBins' else 'Bins' }}
+    </button>
+    <button class="btn-dd btn-complete" onclick="completeTask({{ task.id }})">
+      <i class="fas fa-check"></i> {{ t('driverDashboard.completeTask') }}
+    </button>
+    {% endif %}
+    <button class="btn-dd btn-outline" onclick="loadMapForTask({{ task.id }})" style="flex:0;padding:9px 12px;">
+      <i class="fas fa-map"></i>
+    </button>
+  </div>
+</div>
+{% endmacro %}
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Driver interface functions
-let currentTab = 'tasks';
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let map = null;
+let userLat = null, userLng = null;
+let userMarker = null;
+let binMarkers = [];
+let routeLine = null;
+let activeTaskId = null;
 
-function showTab(tabName) {
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    // Remove active class from all nav tabs
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    // Show selected tab
-    document.getElementById(tabName + 'Tab').classList.add('active');
-    
-    // Add active class to selected nav tab
-    event.target.closest('.nav-tab').classList.add('active');
-    
-    currentTab = tabName;
-    
-    // Initialize map if map tab is selected
-    if (tabName === 'map') {
-        setTimeout(initializeMap, 100); // Small delay to ensure tab is visible
-    }
+// ─────────────────────────────────────────────
+//  TOAST
+// ─────────────────────────────────────────────
+function toast(msg, dur=2800) {
+  const el = document.getElementById('ddToast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
 }
 
+// ─────────────────────────────────────────────
+//  TAB NAVIGATION
+// ─────────────────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('.dd-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.dd-nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'map') initMap();
+}
+
+// ─────────────────────────────────────────────
+//  GEOLOCATION
+// ─────────────────────────────────────────────
+function getLocation(cb) {
+  if (!navigator.geolocation) { cb && cb(null); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      cb && cb({ lat: userLat, lng: userLng });
+    },
+    () => cb && cb(null),
+    { enableHighAccuracy: true, timeout: 8000 }
+  );
+}
+
+// ─────────────────────────────────────────────
+//  START TASK + OPTIMIZE ROUTE
+// ─────────────────────────────────────────────
 function startTask(taskId) {
-    if (confirm('{{ t("driverDashboard.confirmStart") }}')) {
-        // Show loading state
-        const btn = event.target.closest('button');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ t("driverDashboard.starting") }}';
-        btn.disabled = true;
-        
-        // Call API to start task
-        fetch(`/api/tasks/${taskId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                status: 'in_progress',
-                started_time: new Date().toISOString()
-            })
+  if (!confirm('{{ t("driverDashboard.confirmStart") }}')) return;
+  const btn = event.currentTarget;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-circle-notch spin"></i>';
+
+  fetch(`/api/tasks/${taskId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'in_progress', started_time: new Date().toISOString() })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.task) {
+      toast('✅ Task started — optimizing route…');
+      activeTaskId = taskId;
+      getLocation(loc => {
+        const body = loc ? { driver_lat: loc.lat, driver_lng: loc.lng } : {};
+        fetch(`/api/tasks/${taskId}/optimize-route`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.task) {
-                alert('{{ t("driverDashboard.taskStarted") }}');
-                location.reload();
-            } else {
-                alert('{{ t("driverDashboard.startError") }}' + (data.error || '{{ t("driverDashboard.unknownError") }}'));
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
+        .then(r => r.json())
+        .then(opt => {
+          if (opt.optimized_route) {
+            toast(`🗺️ Route optimized — ${opt.total_distance_km} km, ${opt.estimated_duration_min} min`);
+          }
+          setTimeout(() => location.reload(), 1200);
         })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('{{ t("driverDashboard.serverError") }}');
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        });
-    }
-}
-
-function completeTask(taskId) {
-    if (confirm('{{ t("driverDashboard.confirmComplete") }}')) {
-        // Show loading state
-        const btn = event.target.closest('button');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ t("driverDashboard.completing") }}';
-        btn.disabled = true;
-        
-        // Call API to complete task
-        fetch(`/api/tasks/${taskId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                status: 'completed',
-                completed_time: new Date().toISOString()
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.task) {
-                alert('{{ t("driverDashboard.taskCompleted") }}');
-                location.reload();
-            } else {
-                alert('{{ t("driverDashboard.completeError") }}' + (data.error || '{{ t("driverDashboard.unknownError") }}'));
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('{{ t("driverDashboard.serverError") }}');
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        });
-    }
-}
-
-function pauseTask(taskId) {
-    if (confirm('{{ t("driverDashboard.confirmPause") }}')) {
-        console.log('Pausing task:', taskId);
-        alert('{{ t("driverDashboard.taskPaused") }}');
-    }
-}
-
-function navigateToBin(latitude, longitude, binId) {
-    const lat = parseFloat(latitude);
-    const lng = parseFloat(longitude);
-    
-    if (confirm('{{ t("driverDashboard.navigateConfirm") }} ' + binId + '?')) {
-        // Try to open Google Maps with directions
-        const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-        
-        // Check if on mobile device
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
-        if (isMobile) {
-            // Try to open in Google Maps app first
-            const mapsAppUrl = `comgooglemaps://?daddr=${lat},${lng}&directionsmode=driving`;
-            window.location.href = mapsAppUrl;
-            
-            // Fallback to web version after a short delay
-            setTimeout(() => {
-                window.open(googleMapsUrl, '_blank');
-            }, 2000);
-        } else {
-            // Open in new tab for desktop
-            window.open(googleMapsUrl, '_blank');
-        }
-        
-        console.log(`Navigating to bin ${binId} at coordinates: ${lat}, ${lng}`);
-    }
-}
-
-function markBinCollected(taskId, binId) {
-    if (confirm('{{ t("driverDashboard.binArrived") }}')) {
-        // Show loading state
-        const btn = event.target.closest('button');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ t("driverDashboard.processing") }}';
-        btn.disabled = true;
-        
-        // Call API to mark bin as collected
-        fetch(`/api/tasks/${taskId}/bins/${binId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                status: 'collected',
-                collected_time: new Date().toISOString(),
-                fill_level_after: 0
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.task_bin) {
-                alert('{{ t("driverDashboard.binCollected") }}');
-                
-                // Update UI
-                const binItem = document.querySelector(`[data-bin-id="${binId}"]`);
-                if (binItem) {
-                    const statusElement = binItem.querySelector('.bin-status');
-                    statusElement.innerHTML = '<i class="fas fa-check"></i> {{ t("driverDashboard.collected") }}';
-                    statusElement.className = 'bin-status collected';
-                    
-                    const actionsElement = binItem.querySelector('.bin-actions');
-                    actionsElement.innerHTML = '<button class="btn btn-outline-success btn-sm" disabled><i class="fas fa-check-circle"></i> {{ t("driverDashboard.completed") }}</button>';
-                }
-            } else {
-                alert('{{ t("driverDashboard.binCollectError") }}' + (data.error || '{{ t("driverDashboard.unknownError") }}'));
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('{{ t("driverDashboard.serverError") }}');
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        });
-    }
-}
-
-function refreshTasks() {
-    const btn = event.target.closest('button');
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{ t("driverDashboard.processing") }}';
-    btn.disabled = true;
-    
-    setTimeout(() => {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        location.reload();
-    }, 2000);
-}
-
-function reportIssue() {
-    const issue = prompt('{{ t("driverDashboard.describeIssue") }}');
-    if (issue) {
-        console.log('Reporting issue:', issue);
-        alert('{{ t("driverDashboard.issueReported") }}');
-    }
-}
-
-function centerMap() {
-    if (typeof map !== 'undefined' && map) {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(position) {
-                const userLat = position.coords.latitude;
-                const userLng = position.coords.longitude;
-                map.setView([userLat, userLng], 15);
-                
-                // Add user location marker if it doesn't exist
-                if (typeof userMarker !== 'undefined' && userMarker) {
-                    map.removeLayer(userMarker);
-                }
-                userMarker = L.marker([userLat, userLng], {
-                    icon: L.divIcon({
-                        className: 'user-location-marker',
-                        html: '<i class="fas fa-user-circle"></i>',
-                        iconSize: [30, 30]
-                    })
-                }).addTo(map).bindPopup('{{ t("driverDashboard.yourLocation") }}');
-                
-                alert('{{ t("driverDashboard.locationMarked") }}');
-            }, function(error) {
-                console.error('Geolocation error:', error);
-                alert('{{ t("driverDashboard.locationError") }}');
-            });
-        } else {
-            alert('{{ t("driverDashboard.browserNoLocation") }}');
-        }
+        .catch(() => setTimeout(() => location.reload(), 800));
+      });
     } else {
-        alert('{{ t("driverDashboard.mapNotAvailable") }}');
+      toast('❌ ' + (data.error || 'Error'));
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-play"></i> {{ t("driverDashboard.startTask") }}';
     }
+  })
+  .catch(() => { toast('❌ Server error'); btn.disabled = false; });
 }
 
-function toggleMapLayers() {
-    console.log('Toggling map layers');
-    alert('{{ t("driverDashboard.toggleLayers") }}');
+// ─────────────────────────────────────────────
+//  COMPLETE TASK
+// ─────────────────────────────────────────────
+function completeTask(taskId) {
+  if (!confirm('{{ t("driverDashboard.confirmComplete") }}')) return;
+  const btn = event.currentTarget;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-circle-notch spin"></i>';
+  fetch(`/api/tasks/${taskId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'completed', completed_time: new Date().toISOString() })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.task) { toast('✅ Task completed!'); setTimeout(() => location.reload(), 1000); }
+    else { toast('❌ ' + (d.error || 'Error')); btn.disabled = false; }
+  })
+  .catch(() => { toast('❌ Server error'); btn.disabled = false; });
 }
 
-function editProfile() {
-    console.log('Opening profile edit');
-    alert('{{ t("driverDashboard.editProfileOpen") }}');
+// ─────────────────────────────────────────────
+//  VIEW BINS (ordered route)
+// ─────────────────────────────────────────────
+let binsModalTaskId = null;
+function viewBins(taskId) {
+  binsModalTaskId = taskId;
+  fetch(`/api/tasks/${taskId}/bins-ordered`)
+    .then(r => r.json())
+    .then(data => {
+      renderBinsPanel(data);
+    })
+    .catch(() => toast('❌ Could not load bins'));
 }
 
-function changePassword() {
-    const newPassword = prompt('{{ t("driverDashboard.enterNewPassword") }}');
-    if (newPassword) {
-        console.log('Changing password');
-        alert('{{ t("driverDashboard.passwordChanged") }}');
+function renderBinsPanel(data) {
+  // Remove existing panel
+  document.getElementById('binsPanel')?.remove();
+
+  const panel = document.createElement('div');
+  panel.id = 'binsPanel';
+  panel.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;
+    display:flex;align-items:flex-end;
+  `;
+
+  const dist = data.total_distance_km ? data.total_distance_km.toFixed(1) : '—';
+  const dur  = data.estimated_duration_min || '—';
+
+  const bins = data.bins || [];
+  const binsHtml = bins.map((b, i) => {
+    const fillCls = b.fill_level >= 80 ? 'high' : b.fill_level >= 50 ? 'mid' : 'low';
+    const isDone  = b.status === 'collected';
+    return `
+      <div class="bin-row ${isDone ? 'collected' : ''}" data-taskbin="${b.task_bin_id}">
+        <div class="bin-seq ${isDone ? 'done' : ''}">${isDone ? '<i class="fas fa-check"></i>' : (b.sequence_order || i+1)}</div>
+        <div class="bin-row-info">
+          <div class="bin-row-id">${b.bin_identifier || 'BIN-'+b.bin_id}</div>
+          <div class="bin-row-loc">${b.location || '—'}</div>
+        </div>
+        <span class="fill-chip ${fillCls}">${b.fill_level ?? '?'}%</span>
+        ${isDone
+          ? `<button class="bin-row-action done-btn"><i class="fas fa-check-circle"></i></button>`
+          : `<button class="bin-row-action nav" onclick="navigateToBin(${b.latitude},${b.longitude},'${b.bin_identifier}')"><i class="fas fa-directions"></i></button>
+             <button class="bin-row-action collect" onclick="collectBin(${binsModalTaskId},${b.bin_id},this)"><i class="fas fa-check"></i></button>`
+        }
+      </div>`;
+  }).join('');
+
+  panel.innerHTML = `
+    <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;">
+      <div style="padding:14px 18px 10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-weight:700;font-size:.95rem;">🗺️ Optimized Route</div>
+        <button onclick="document.getElementById('binsPanel').remove()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-muted);">✕</button>
+      </div>
+      <div class="route-summary" style="margin:10px 14px 0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <div class="route-summary-item"><div class="route-summary-val">${dist}</div><div class="route-summary-lbl">km</div></div>
+        <div class="route-summary-item"><div class="route-summary-val">${dur}</div><div class="route-summary-lbl">min</div></div>
+        <div class="route-summary-item"><div class="route-summary-val">${bins.length}</div><div class="route-summary-lbl">bins</div></div>
+      </div>
+      <div class="bin-list" style="overflow-y:auto;flex:1;margin-top:10px;">${binsHtml}</div>
+    </div>
+  `;
+  panel.addEventListener('click', e => { if (e.target === panel) panel.remove(); });
+  document.body.appendChild(panel);
+}
+
+function collectBin(taskId, binId, btn) {
+  if (!confirm('Mark this bin as collected?')) return;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-circle-notch spin"></i>';
+  fetch(`/api/tasks/${taskId}/bins/${binId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'collected', collected_time: new Date().toISOString(), fill_level_after: 0 })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.task_bin) {
+      toast('✅ Bin collected!');
+      viewBins(taskId); // Refresh panel
+    } else { toast('❌ ' + (d.error || 'Error')); btn.disabled = false; }
+  })
+  .catch(() => toast('❌ Error'));
+}
+
+// ─────────────────────────────────────────────
+//  MAP
+// ─────────────────────────────────────────────
+function initMap() {
+  if (map) return;
+  map = L.map('driverMap').setView([24.6262, 46.5631], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  getLocation(loc => {
+    if (loc) {
+      map.setView([loc.lat, loc.lng], 14);
+      userMarker = L.marker([loc.lat, loc.lng], {
+        icon: L.divIcon({
+          className: '',
+          html: `<div style="background:#00b894;width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);"></div>`,
+          iconSize: [18, 18], iconAnchor: [9, 9]
+        })
+      }).addTo(map).bindPopup('📍 Your Location');
     }
+  });
 }
 
-function contactSupport() {
-    console.log('Contacting support');
-    alert('{{ t("driverDashboard.supportOpen") }}');
+function loadMapForTask(taskId) {
+  showTab('map', document.getElementById('navMap'));
+  fetch(`/api/tasks/${taskId}/bins-ordered`)
+    .then(r => r.json())
+    .then(data => {
+      if (!map) initMap();
+      // Clear old markers
+      binMarkers.forEach(m => map.removeLayer(m));
+      binMarkers = [];
+      if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+
+      const bins = (data.bins || []).filter(b => b.latitude && b.longitude);
+      const coords = [];
+      bins.forEach((b, i) => {
+        const isDone  = b.status === 'collected';
+        const fillCls = b.fill_level >= 80 ? '#d63031' : b.fill_level >= 50 ? '#e17055' : '#00b894';
+        const color   = isDone ? '#b2bec3' : fillCls;
+        const marker  = L.circleMarker([b.latitude, b.longitude], {
+          radius: b.status === 'collected' ? 8 : 12,
+          fillColor: color, color: '#fff', weight: 2, fillOpacity: .9
+        }).addTo(map);
+        marker.bindPopup(`
+          <b>${b.bin_identifier || 'Bin ' + b.bin_id}</b><br>
+          ${b.location || ''}<br>
+          Fill: ${b.fill_level ?? '?'}% — <b>${b.status}</b>
+        `);
+        binMarkers.push(marker);
+        coords.push([b.latitude, b.longitude]);
+        // Sequence label
+        if (!isDone) {
+          L.marker([b.latitude, b.longitude], {
+            icon: L.divIcon({
+              className: '',
+              html: `<div style="background:var(--accent);color:#fff;font-weight:700;font-size:.7rem;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-top:-30px;">${b.sequence_order || i+1}</div>`,
+              iconSize: [20, 20], iconAnchor: [10, 10]
+            })
+          }).addTo(map);
+        }
+      });
+
+      // Draw route polyline
+      if (userLat && coords.length) {
+        const allCoords = [[userLat, userLng], ...coords];
+        routeLine = L.polyline(allCoords, { color: '#00b894', weight: 3, dashArray: '6,6' }).addTo(map);
+        map.fitBounds(routeLine.getBounds(), { padding: [20, 20] });
+      } else if (coords.length) {
+        map.fitBounds(L.latLngBounds(coords), { padding: [20, 20] });
+      }
+
+      // Update summary
+      if (data.total_distance_km) {
+        document.getElementById('routeSummary').style.display = 'grid';
+        document.getElementById('sumDist').textContent = data.total_distance_km.toFixed(1);
+        document.getElementById('sumTime').textContent = data.estimated_duration_min || '—';
+        document.getElementById('sumBins').textContent = bins.length;
+      }
+    })
+    .catch(() => toast('Could not load map data'));
 }
 
-function emergencyCall() {
-    if (confirm('{{ t("driverDashboard.confirmEmergency") }}')) {
-        console.log('Making emergency call');
-        alert('{{ t("driverDashboard.emergencyCall") }}');
-    }
+// ─────────────────────────────────────────────
+//  NAVIGATE TO BIN
+// ─────────────────────────────────────────────
+function navigateToBin(lat, lng, binId) {
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+  window.open(url, '_blank');
+}
+
+// ─────────────────────────────────────────────
+//  MISC ACTIONS
+// ─────────────────────────────────────────────
+function refreshDashboard() {
+  const icon = document.getElementById('refreshIcon');
+  icon.classList.add('spin');
+  setTimeout(() => location.reload(), 600);
 }
 
 function reportLocation() {
-    console.log('Reporting current location');
-    alert('{{ t("driverDashboard.locationSent") }}');
+  getLocation(loc => {
+    if (!loc) { toast('❌ Location unavailable'); return; }
+    fetch('/api/drivers/{{ session.user_id }}', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        current_location_lat: loc.lat,
+        current_location_lng: loc.lng
+      })
+    }).then(() => toast('📍 Location updated'));
+  });
 }
 
-function quickMessage() {
-    const message = prompt('{{ t("driverDashboard.quickMessagePrompt") }}');
-    if (message) {
-        console.log('Sending quick message:', message);
-        alert('{{ t("driverDashboard.messageSent") }}');
-    }
+function reportIssue() {
+  const issue = prompt('Describe the issue:');
+  if (issue) toast('⚠️ Issue reported');
 }
 
 function logout() {
-    if (confirm('{{ t("driverDashboard.confirmLogout") }}')) {
-        window.location.href = '{{ url_for("main.logout") }}'; // Replace with your actual logout URL
-    }
+  if (confirm('{{ t("driverDashboard.confirmLogout") }}'))
+    window.location.href = '{{ url_for("main.logout") }}';
 }
 
-// Auto-refresh tasks every 30 seconds
-setInterval(() => {
-    if (currentTab === 'tasks') {
-        // Only refresh if on tasks tab
-        console.log('Auto-refreshing tasks...');
-    }
-}, 30000);
-
-// Handle back button
-window.addEventListener('popstate', function(event) {
-    // Handle browser back button
-    console.log('Back button pressed');
-});
-
-// Initialize driver interface
-let map;
-let userMarker;
-let binMarkers = [];
-let userLocation = null;
-
-// Calculate distance between two coordinates
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Radius of the Earth in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c; // Distance in kilometers
-    return distance;
-}
-
-// Update distance displays
-function updateDistances() {
-    if (!userLocation) return;
-    
-    document.querySelectorAll('.distance').forEach(element => {
-        const lat = parseFloat(element.dataset.lat);
-        const lng = parseFloat(element.dataset.lng);
-        
-        if (lat && lng) {
-            const distance = calculateDistance(userLocation.lat, userLocation.lng, lat, lng);
-            const distanceText = distance < 1 ? 
-                `${Math.round(distance * 1000)} م` : 
-                `${distance.toFixed(1)} كم`;
-            element.querySelector('.distance-text').textContent = distanceText;
-        }
+// ─────────────────────────────────────────────
+//  SOCKET.IO — Real-time updates
+// ─────────────────────────────────────────────
+(function initSocket() {
+  if (typeof io === 'undefined') return;
+  const socket = io();
+  socket.on('connect', () => {
+    socket.emit('join_bins');
+    socket.emit('join_drivers');
+  });
+  socket.on('bin_data_update', data => {
+    if (!data || !data.bins) return;
+    data.bins.forEach(b => {
+      if (b.fill_level >= 80) toast(`🚨 Bin ${b.bin_id} is full (${b.fill_level}%)`);
     });
-}
+  });
+  socket.on('task_update', data => {
+    toast(`📋 Task ${data.task_id} updated: ${data.status}`);
+  });
+})();
 
-// Initialize map
-function initializeMap() {
-    if (currentTab === 'map' && !map) {
-        // Initialize Leaflet map
-        map = L.map('driverMap').setView([24.6262, 46.5631], 12); // Default to Riyadh
-        
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-        
-        // Get bin data from the page and add to map
-        const binElements = document.querySelectorAll('[data-lat]');
-        binElements.forEach(element => {
-            const lat = parseFloat(element.dataset.lat);
-            const lng = parseFloat(element.dataset.lng);
-            const binItem = element.closest('.bin-item');
-            
-            if (lat && lng && binItem) {
-                const binId = binItem.querySelector('.bin-id').textContent;
-                const fillLevelText = binItem.querySelector('.fill-level').textContent;
-                const fillLevel = parseInt(fillLevelText.match(/\d+/)[0]);
-                const location = binItem.querySelector('.bin-location').textContent.split('\n')[0].trim();
-                const statusElement = binItem.querySelector('.bin-status');
-                const status = statusElement.textContent.includes('{{ t("driverDashboard.collected") }}') ? 'collected' : 'pending';
-                
-                // Choose marker color based on fill level and status
-                let markerColor = '#27ae60'; // Green for low fill
-                if (fillLevel >= 80) markerColor = '#e74c3c'; // Red for high fill
-                else if (fillLevel >= 50) markerColor = '#f39c12'; // Orange for medium fill
-                
-                if (status === 'collected') markerColor = '#95a5a6'; // Gray for collected
-                
-                const binMarker = L.circleMarker([lat, lng], {
-                    color: markerColor,
-                    fillColor: markerColor,
-                    fillOpacity: 0.8,
-                    radius: 10
-                }).addTo(map);
-                
-                binMarker.bindPopup(`
-                    <div style="text-align: center; font-family: 'Cairo', sans-serif;">
-                        <h6>${binId}</h6>
-                        <p><i class="fas fa-map-marker-alt"></i> ${location}</p>
-                        <p><i class="fas fa-chart-pie"></i> ${fillLevel}% ممتلئ</p>
-                        <p><i class="fas fa-info-circle"></i> ${status === 'pending' ? '{{ t("driverDashboard.pending") }}' : '{{ t("driverDashboard.collected") }}'}</p>
-                        <button onclick="navigateToBin(${lat}, ${lng}, '${binId}')" class="btn btn-primary btn-sm">
-                            <i class="fas fa-directions"></i> {{ t("driverDashboard.navigate") }}
-                        </button>
-                    </div>
-                `);
-                
-                binMarkers.push(binMarker);
-            }
-        });
-        
-        // Try to get user location and center map
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(position) {
-                userLocation = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                
-                map.setView([userLocation.lat, userLocation.lng], 15);
-                
-                userMarker = L.marker([userLocation.lat, userLocation.lng], {
-                    icon: L.divIcon({
-                        className: 'user-location-marker',
-                        html: '<i class="fas fa-user-circle" style="color: #3498db; font-size: 20px;"></i>',
-                        iconSize: [30, 30]
-                    })
-                }).addTo(map).bindPopup('{{ t("driverDashboard.yourLocation") }}');
-                
-                // Update distances
-                updateDistances();
-            });
-        }
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Driver interface initialized');
-    
-    // Check for notifications
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-    }
-    
-    // Initialize geolocation for distance calculation
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            userLocation = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude
-            };
-            console.log('Current position:', position.coords);
-            updateDistances();
-        }, function(error) {
-            console.error('Geolocation error:', error);
-        });
-        
-        // Update location every 30 seconds
-        setInterval(() => {
-            navigator.geolocation.getCurrentPosition(function(position) {
-                userLocation = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                updateDistances();
-                
-                // Update user marker on map if it exists
-                if (userMarker && map) {
-                    userMarker.setLatLng([userLocation.lat, userLocation.lng]);
-                }
-            });
-        }, 30000);
-    }
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  getLocation(null); // pre-fetch location
+  // Auto-load map for in_progress task
+  const activeBtns = document.querySelectorAll('[onclick*="loadMapForTask"]');
+  if (activeBtns.length) {
+    const m = activeBtns[0].getAttribute('onclick').match(/\d+/);
+    if (m) activeTaskId = parseInt(m[0]);
+  }
 });
 </script>
 {% endblock %}

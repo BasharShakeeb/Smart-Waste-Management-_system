@@ -16,6 +16,7 @@ from routes.user_routes import user_api
 from routes.driver_routes import driver_api
 from routes.bin_routes import bin_api
 from routes.task_routes import task_api
+from routes.optimize_routes import optimize_api
 
 
 app = Flask(__name__)
@@ -80,6 +81,7 @@ app.register_blueprint(user_api)
 app.register_blueprint(driver_api)
 app.register_blueprint(bin_api)
 app.register_blueprint(task_api)
+app.register_blueprint(optimize_api)
 
 # Initialize WebSocket events
 init_socketio_events(socketio)
